@@ -23,9 +23,9 @@ class Robotarm(object):
             return
         for i in range(0,11):
             intangel[i]=round(angels[i])
-        print(intangel)
+        #print(intangel)
         send_bytes=bytes(intangel)
-        print(send_bytes)
+        #print(send_bytes)
         self.ser.write(send_bytes)
 
     def control(self, control_index):  #control_index包括：[柱坐标系theta,柱坐标系r,柱坐标系z,手腕角度,手指弯曲程度（5个），转动速度（5-30，越小越快）,最后一个通信参数(默认为1)]

@@ -14,7 +14,7 @@ import base64
 import urllib
 
 import sys
-sys.path.append('../')
+sys.path.append('./')
 import time
 from Robotarm import Robotarm
 
@@ -235,9 +235,22 @@ class StateMachine:
         else: 
             print('No response')
 
+        if gesture == self.act:
+            print('Draw')
+        elif (gesture == 2 and self.act == 0) or (gesture == 0 and self.act == 5) or (gesture == 5 and self.act == 2):
+            print('You Lose!')
+            img = cv2.imread('img/lose.jpg')
+            cv2.imshow('Win or Lose', img)
+            cv2.waitKey(1000)
+            #time.sleep(3)
+        else:
+            print('You Win!')
+            img = cv2.imread('img/win.jpg')
+            cv2.imshow('Win or Lose', img)
+            cv2.waitKey(1000)
+            #time.sleep(3)
         self.arm.prepare()
         wait()
-        time.sleep(3)
 
     def get_gesture(self, response):
         """
