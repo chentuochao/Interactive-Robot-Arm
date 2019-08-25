@@ -91,7 +91,7 @@ class StateMachine:
         self.l_still_cnt = 0
         self.pose = pose
 
-        self.limb_length = 20.0
+        self.limb_length = 100.0
         if self.pose[3][0] != -1 and self.pose[4][0] != -1:
             self.limb_length = np.linalg.norm(self.pose[3]-self.pose[4])
         elif self.pose[6][0] != -1 and self.pose[7][0] != -1:
@@ -104,7 +104,7 @@ class StateMachine:
         elif new_pose[6][0] != -1 and new_pose[7][0] != -1:
             self.limb_length = np.linalg.norm(new_pose[6]-new_pose[7])
 
-        move_thrd = self.limb_length / 10
+        move_thrd = self.limb_length / 20
         if new_pose[4][0] != -1:
             r_move_dist = np.linalg.norm(new_pose[4] - self.pose[4])
         else:
@@ -123,16 +123,20 @@ class StateMachine:
             else:
                 if r_move_dist <= move_thrd:
                     self.r_still_cnt += 1
-                else:
-                    self.r_move_cnt = 0
-                    self.r_still_cnt = 0
+                #else:
+                    #self.r_move_cnt = 0
+                    #self.r_still_cnt = 0
                 if self.r_still_cnt == 5:
                     centerx, centery = new_pose[4]
-                    minx = max(0, int(centerx-self.limb_length))
-                    maxx = min(img.shape[1]-1, int(centerx+self.limb_length))
-                    miny = max(0, int(centery-self.limb_length))
-                    maxy = max(img.shape[0]-1, int(centery+self.limb_length))
-                    self.trigger(img[miny:maxy, minx:maxx, :])
+                    minx = max(0, int(centerx-1.5*self.limb_length))
+                    maxx = min(img.shape[1]-1, int(centerx+1.5*self.limb_length))
+                    miny = max(0, int(centery-1.5*self.limb_length))
+                    maxy = min(img.shape[0]-1, int(centery+1.5*self.limb_length))
+                    if new_pose[2][1] < new_pose[4][1]: # wrist below shoulder
+                        self.trigger(img[miny:maxy, minx:maxx, :])
+                    else:
+                        self.r_move_cnt = 0
+                        self.r_still_cnt = 0
         
         if l_move_dist != -1:
             if self.l_move_cnt < 5:
@@ -148,14 +152,18 @@ class StateMachine:
                     self.l_still_cnt = 0
                 if self.l_still_cnt == 5:
                     centerx, centery = new_pose[7]
-                    minx = max(0, int(centerx-self.limb_length))
-                    maxx = min(img.shape[1]-1, int(centerx+self.limb_length))
-                    miny = max(0, int(centery-self.limb_length))
-                    maxy = max(img.shape[0]-1, int(centery+self.limb_length))
-                    self.trigger(img[miny:maxy, minx:maxx, :])
+                    minx = max(0, int(centerx-1.5*self.limb_length))
+                    maxx = min(img.shape[1]-1, int(centerx+1.5*self.limb_length))
+                    miny = max(0, int(centery-1.5*self.limb_length))
+                    maxy = max(img.shape[0]-1, int(centery+1.5*self.limb_length))
+                    if new_pose[5][1] < new_pose[7][1]:
+                        self.trigger(img[miny:maxy, minx:maxx, :])
+                    else:
+                        self.r_move_cnt = 0
+                        self.r_still_cnt = 0
         
         self.pose = new_pose
-        print('ID {}: r_move_cnt {}, r_still_cnt {}, l_move_cnt {}, l_still_cnt {}'.format(self.id, self.r_move_cnt, self.r_still_cnt, self.l_move_cnt, self.l_still_cnt))
+        #print('ID {}: r_move_cnt {}, r_still_cnt {}, l_move_cnt {}, l_still_cnt {}'.format(self.id, self.r_move_cnt, self.r_still_cnt, self.l_move_cnt, self.l_still_cnt))
 
 
     def trigger(self, img):
@@ -173,7 +181,7 @@ class StateMachine:
         base64_str = base64.b64encode(base64_str)
 
         params = {"image":base64_str}
-        params = urllib.urlencode(params)
+        params = urllib.parse.urlencode(params).encode(encoding='UTF8')
 
         access_token = '24.c277ba8aff1df28b001179eb81038f18.2592000.1569241320.282335-17077804'
         request_url = request_url + "?access_token=" + access_token
@@ -240,7 +248,7 @@ def run_demo(net, image_provider, height_size, cpu, track_ids):
 
         img = cv2.addWeighted(orig_img, 0.6, img, 0.4, 0)
         if track_ids == True:
-            propagate_ids(previous_poses, current_poses, threshold=10)
+            propagate_ids(previous_poses, current_poses, threshold=3)
             previous_poses = current_poses
             for pose in current_poses:
                 cv2.rectangle(img, (pose.bbox[0], pose.bbox[1]),
