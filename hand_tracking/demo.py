@@ -190,9 +190,27 @@ class StateMachine:
         response = urllib.request.urlopen(request)
         content = response.read()
         if content:
-            print(content)
+            gesture = self.get_gesture(content)
         else: 
             print('No response')
+
+    def get_gesture(self, response):
+        """
+        0-rock, 2-scissor, 5-paper
+        """
+        
+        output_number = None
+        output_cls = None
+        results = response['result']        
+        for res in results:
+            classname = res['classname']
+            if classname in StateMachine.word2num.keys():
+                output_number = StateMachine.word2num[classname]
+                output_cls = classname
+        if output_number == None:
+            print("No gesture recognized: ", response)
+        print(output_number, output_cls)
+        return output_number
 
 
 def run_demo(net, image_provider, height_size, cpu, track_ids):
