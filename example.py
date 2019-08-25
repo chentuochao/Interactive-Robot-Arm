@@ -3,28 +3,50 @@ import time
 from Robotarm import Robotarm
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-p", "--port",help="Input serial port",type=str,default="COM22")
+parser.add_argument("-p", "--port",help="Input serial port",type=str,default="COM18")
 parser.add_argument('-r', "--rate",help="Input baudrate",type=int, default=9600)
 args = parser.parse_args()
 
 serialPort =  args.port  #"COM22"  # 串口
 baudRate =  args.rate # 波特率
 #range of angel for each servos
-angel_range=[[60,35,20,35,55,10,10,10],  #min
-[145,120,120,95,120,170,170,170]]    #max
+angel_range=[[60,10,15,15,55,10,10,10,10],  #min
+[145,135,95,70,125,170,170,170,170]]    #max
 
-angels=[60,35,20,35,55,90,90,90] #angels is the vector representing the angels of different servos [大拇指，食指，中指，无名指，小指，手腕旋转，第一节手臂，第二节手臂]
+angels=[60,10,15,15,55,90,0,0,90,30,1] #angels is the vector representing the angels of different servos [大拇指，食指，中指，无名指，小指，手腕旋转，第一节手臂，第二节手臂]
 arm=Robotarm(serialPort, baudRate, angels)
+final_index=[90,10.5,7,90,0,0,0,0,0,30,1]
+#control_index=[90,10.5,7,90,0,0,0,0,0]
+control_index=[90,10.5,11,90,1,1,1,1,1,30,1]
+
+def wait():
+        while 1:
+            data = arm.readline()
+            if data!=b'' and data[0]==102:
+                print(data)
+                break
 
 def main():
     try:
         while 1:
-            arm.control(angels)    #send the control instruction 
-            time.sleep(0.5)
-            #data = arm.readline()
-            #print(data)
-            #input your code
+            arm.control(control_index)
+            data = arm.readline()
+            if data!=b'':
+                print(data[0])
+                if data[0]==98:
+                    break
+        print("begin")
+        while 1:
+            arm.prepare()
+            wait()
+            arm.prepare2()
+            wait()
+            #time.sleep(5)
+            arm.st_jd_b()
+            wait()
+            time.sleep(3)
     except KeyboardInterrupt:
+        arm.control(final_index)
         arm.close()
 
 if __name__ == "__main__":

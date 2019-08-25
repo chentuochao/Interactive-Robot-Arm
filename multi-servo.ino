@@ -1,18 +1,3 @@
-/*************************************************** 
-  This is an example for our Adafruit 16-channel PWM & Servo driver
-  Servo test - this will drive 16 servos, one after the other
-  这是我们的Adafruit 16通道PWM和伺服驱动器的一个例子，驱动16个伺服电机
-
-  Pick one up today in the adafruit shop!
-  ------> http://www.adafruit.com/products/815
-
-  These displays use I2C to communicate, 2 pins are required to  
-  interface. For Arduino UNOs, thats SCL -> Analog 5, SDA -> Analog 4
-  这些显示器使用I2C进行通信，需要2个引脚。
-  接口。对于ARDUINO UNOS，这是SCL->模拟5，SDA - >模拟4
-
-  ****************************************************/
-
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 
@@ -33,16 +18,24 @@ have!*/
 #define SERVOMAX  512 // this is the 'maximum' pulse length count (out of 4096)
 //这是“最大”脉冲长度计数（在4096中）
 #define NUM 20 
-double angel[8][2]={{60,145},{35,120},{20,120},{35,95},{55,120},{10,100},{10,100},{10,100}};
+double angel[9][2]={{60,145},{10,135},{15,95},{15,70},{55,125},{10,170},{10,170},{10,170},{10,170}};
+unsigned char buffer[9];
+float now[9]={60,10,15,15,55,90,0,0,90};    //current angle
+//float now[9]={145,135,95,70,125,90,90,90,90};    //current angle
+unsigned int goal[9]={60,10,15,15,55,90,0,0,90};  // the goal of each angel
+// int goal[9]={145,135,95,70,125,90,90,90,90};    //current angle
 
+float next[9];   // next step
+int steps=0;
 // our servo # counter
 //uint8_t servonum = 0;
+bool if_return=0;
 
 void setup() {
    Serial.begin(9600);
-   Serial.println("16 channel Servo test!");
+   //Serial.println("16 channel Servo test!");
 
-  pwm.begin();
+   pwm.begin();
    
    pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
    ////模拟伺服在60赫兹更新下运行
@@ -52,60 +45,63 @@ void setup() {
      angel[m][0]=angel[m][0]/180*(SERVOMAX-SERVOMIN)+SERVOMIN;
      angel[m][1]=angel[m][1]/180*(SERVOMAX-SERVOMIN)+SERVOMIN;
    }
+   for (int m=0; m<9;m++)
+    {
+      pwm.setPWM(m, 0, now[m]/180*(SERVOMAX-SERVOMIN)+SERVOMIN);  //initialize the angel
+    }
+    Serial.println("begin");
+   
 }
 
-// you can use this function if you'd like to set the pulse length in seconds
-// e.g. setServoPulse(0, 0.001) is a ~1 millisecond pulse width. its not precise!
-//如果您想以秒为单位设置脉冲长度，则可以使用此函数。
-//例如SET伺服脉冲（0，0.001）是一个1毫秒的脉冲宽度。它不是
-void setServoPulse(uint8_t n, double pulse) {
-   double pulselength;//精度浮点数
-   
-   pulselength = 1000000;   // 1,000,000 us per second 每秒100万
-   pulselength /= 60;   // 60 Hz
-   Serial.print(pulselength); Serial.println(" us per period"); 
-   pulselength /= 4096;  // 12 bits of resolution 12位分辨率
-   Serial.print(pulselength); Serial.println(" us per bit"); 
-   pulse *= 1000;
-   pulse /= pulselength;
-   Serial.println(pulse);
-   pwm.setPWM(n, 0, pulse);
+void control(float *next)
+{
+     for (int m=0; m<9;m++)
+    {
+      //Serial.print('|');
+      //Serial.print(next[m]);
+      double myangel=next[m]/180*(SERVOMAX-SERVOMIN)+SERVOMIN;
+      //Serial.print(m);
+      //Serial.println(myangel);
+      if(myangel>angel[m][1] || myangel<angel[m][0])
+      { 
+        //Serial.println("warning!!!");
+        continue;
+      }
+      pwm.setPWM(m, 0, myangel);
+    }
+    //Serial.print('\n');
 }
 
 void loop() {
-   // Drive each servo one at a time
-   //Serial.println(servonum);
-   //每次驱动一个伺服驱动器
-
-   for (int divide = 0; divide <= NUM; divide++) {
-    for (int m=0; m<8;m++)
+    if(Serial.available())
     {
-      double myangel= angel[m][0]+(angel[m][1]-angel[m][0])*divide/NUM;
-      Serial.print(m);
-      Serial.println(myangel);
-      if(myangel>SERVOMAX || myangel<SERVOMIN)
+      Serial.readBytes(buffer,11);
+      
+      for(int i=0;i<9;++i)
       { 
-      Serial.print("warning!!!");
-      continue;
+        //Serial.print(buffer[i]);
+        goal[i] = buffer[i];
+        //Serial.print(now[i]);
+        //Serial.print(goal[i]);
+        //Serial.print('|');
+        buffer[i]='\0';
       }
-      pwm.setPWM(m, 0, myangel);
+      steps=buffer[9];
+      if_return=buffer[10];
     }
-     delay(50);
-   }
-   delay(500);
-   for (int divide = NUM; divide >= 0; divide--) {
-    for (int m=0; m<8;m++)
+    
+    if(steps>0)
     {
-      double myangel= angel[m][0]+(angel[m][1]-angel[m][0])*divide/NUM;
-            if(myangel>SERVOMAX || myangel<SERVOMIN)
+      for(int i=0;i<9;++i)
       { 
-      Serial.print("warning!!!");
-      continue;
+        next[i] = now[i] + (goal[i] - now[i])/steps;
+        now[i] = next[i];
       }
-      pwm.setPWM(m, 0, myangel);
+      steps--;
+      if(steps==0 && if_return==1) Serial.println("finished!!");
+      control(next);
     }
-     delay(50);
-   }
-   delay(500);
+    
+    delay(60);
 
 }
