@@ -13,7 +13,6 @@ class Robotarm(object):
         if self.ser.isOpen()==0:
             print("Serial Open Error!!")
         else:
-            print("参数设置：串口=%s ，波特率=%d" % (self.PORT, self.RATE))
             self.send_control(initial_pos)
 
     def send_control(self, angels):
@@ -26,6 +25,7 @@ class Robotarm(object):
             intangel[i]=round(angels[i])
         print(intangel)
         send_bytes=bytes(intangel)
+        print(send_bytes)
         self.ser.write(send_bytes)
 
     def control(self, control_index):
@@ -95,6 +95,7 @@ class Robotarm(object):
         elif mode==2:  #napkin
             self.control([90,16,5,0,0,0,0,0,0,5,1])
             print("napkin")
+        return mode
 
 
     def read(self,length):

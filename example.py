@@ -3,17 +3,17 @@ import time
 from Robotarm import Robotarm
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-p", "--port",help="Input serial port",type=str,default="COM18")
+parser.add_argument("-p", "--port",help="Input serial port",type=str,default="/dev/ttyACM0")
 parser.add_argument('-r', "--rate",help="Input baudrate",type=int, default=9600)
 args = parser.parse_args()
 
-serialPort =  args.port  #"COM22"  # 串口
-baudRate =  args.rate # 波特率
+serialPort =  args.port  #"COM22" 
+baudRate =  args.rate 
 #range of angel for each servos
 angel_range=[[60,10,15,15,55,10,10,10,10],  #min
 [145,135,95,70,125,170,170,170,170]]    #max
 
-angels=[60,10,15,15,55,90,0,0,90,30,1] #angels is the vector representing the angels of different servos [大拇指，食指，中指，无名指，小指，手腕旋转，第一节手臂，第二节手臂]
+angels=[60,10,15,15,55,90,0,0,90,30,1] #angels is the vector representing the angels of different servos []
 arm=Robotarm(serialPort, baudRate, angels)
 final_index=[90,10.5,7,90,0,0,0,0,0,30,1]
 #control_index=[90,10.5,7,90,0,0,0,0,0]

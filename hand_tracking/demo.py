@@ -13,6 +13,12 @@ from val import normalize, pad_width
 import base64
 import urllib
 
+import sys
+sys.path.append('../')
+import time
+from Robotarm import Robotarm
+
+arm = None
 
 class ImageReader(object):
     def __init__(self, file_names):
@@ -81,15 +87,24 @@ def infer_fast(net, img, net_input_height_size, stride, upsample_ratio, cpu,
 
     return heatmaps, pafs, scale, pad
 
+def wait():
+    while 1:
+        data = arm.readline()
+        if data!=b'' and data[0]==102:
+            print(data)
+            break
+
 class StateMachine:
     
-    def __init__(self, id, pose):
+    def __init__(self, id, pose, arm):
         self.id = id
         self.r_move_cnt = 0
         self.r_still_cnt = 0
         self.l_move_cnt = 0
         self.l_still_cnt = 0
         self.pose = pose
+        self.move = False
+        self.arm = arm
 
         self.limb_length = 100.0
         if self.pose[3][0] != -1 and self.pose[4][0] != -1:
@@ -118,8 +133,14 @@ class StateMachine:
             if self.r_move_cnt < 5:
                 if r_move_dist > move_thrd:
                     self.r_move_cnt += 1
+                    if self.r_move_cnt == 3 and new_pose[2][1] < new_pose[4][1]:
+                        self.random_act()
                 else:
                     self.r_move_cnt = 0
+                    if self.move:
+                        self.arm.prepare()
+                        self.move = False
+
             else:
                 if r_move_dist <= move_thrd:
                     self.r_still_cnt += 1
@@ -142,8 +163,14 @@ class StateMachine:
             if self.l_move_cnt < 5:
                 if l_move_dist > move_thrd:
                     self.l_move_cnt += 1
+                    if self.l_move_cnt == 3 and new_pose[5][1] < new_pose[7][1]:
+                        self.random_act()
                 else:
                     self.l_move_cnt = 0
+                    if self.move:
+                        self.arm.prepare()
+                        self.move = False
+
             else:
                 if l_move_dist <= move_thrd:
                     self.l_still_cnt += 1
@@ -165,6 +192,20 @@ class StateMachine:
         self.pose = new_pose
         #print('ID {}: r_move_cnt {}, r_still_cnt {}, l_move_cnt {}, l_still_cnt {}'.format(self.id, self.r_move_cnt, self.r_still_cnt, self.l_move_cnt, self.l_still_cnt))
 
+
+    def random_act(self):
+        self.arm.prepare2()
+        wait()
+        act = self.arm.st_jd_b()
+        wait()
+        if act == 0:
+            self.act = 0
+        elif act == 1:
+            self.act == 2
+        elif act == 2:
+            self.act == 5
+        self.move = True
+        
 
     def trigger(self, img):
         print(self.id, 'triggered')
@@ -194,6 +235,10 @@ class StateMachine:
         else: 
             print('No response')
 
+        self.arm.prepare()
+        wait()
+        time.sleep(3)
+
     def get_gesture(self, response):
         """
         0-rock, 2-scissor, 5-paper
@@ -213,7 +258,7 @@ class StateMachine:
         return output_number
 
 
-def run_demo(net, image_provider, height_size, cpu, track_ids):
+def run_demo(net, image_provider, height_size, cpu, track_ids, arm):
     net = net.eval()
     if not cpu:
         net = net.cuda()
@@ -276,7 +321,7 @@ def run_demo(net, image_provider, height_size, cpu, track_ids):
         
         for pose in current_poses:
             if pose.id not in stateMachines.keys():
-                stateMachines[pose.id] = StateMachine(pose.id, pose.keypoints)
+                stateMachines[pose.id] = StateMachine(pose.id, pose.keypoints, arm)
                 print('ID {} detected'.format(pose.id))
                 continue
             stateMachines[pose.id].update(pose.keypoints, img)
@@ -299,6 +344,8 @@ if __name__ == '__main__':
     parser.add_argument('--images', nargs='+', default='', help='path to input image(s)')
     parser.add_argument('--cpu', action='store_true', help='run network inference on cpu')
     parser.add_argument('--track-ids', default=True, help='track poses ids')
+    parser.add_argument("-p", "--port",help="Input serial port",type=str,default="/dev/ttyACM0")
+    parser.add_argument('-r', "--rate",help="Input baudrate",type=int, default=9600)
     args = parser.parse_args()
 
     if args.video == '' and args.images == '':
@@ -312,4 +359,26 @@ if __name__ == '__main__':
     if args.video != '':
         frame_provider = VideoReader(args.video)
 
-    run_demo(net, frame_provider, args.height_size, args.cpu, args.track_ids)
+    
+    
+    angles=[60,10,15,15,55,90,0,0,90,30,1] #angels is the vector representing the angels of different servos []
+    control_index=[90,10.5,11,90,1,1,1,1,1,30,1]
+    arm = Robotarm(args.port, args.rate, angles)
+
+    try:
+        while 1:
+            arm.control(control_index)
+            data = arm.readline()
+            if data!=b'':
+                print(data[0])
+                if data[0]==98:
+                    break
+        arm.prepare()
+        wait()
+        print('start')
+        run_demo(net, frame_provider, args.height_size, args.cpu, args.track_ids, arm)
+    except KeyboardInterrupt:
+        final_index=[90,10.5,7,90,0,0,0,0,0,30,1]
+        arm.control(final_index)
+        arm.close()
+        print('close')
