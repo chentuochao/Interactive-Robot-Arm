@@ -16,7 +16,7 @@ class Robotarm(object):
             print("参数设置：串口=%s ，波特率=%d" % (self.PORT, self.RATE))
             self.send_control(initial_pos)
 
-    def send_control(self, angels):
+    def send_control(self, angels): #angels is the vector representing the angels of different servos [大拇指，食指，中指，无名指，小指，手腕旋转，第一节手臂，第二节手臂，转动速度（5-30，越小越快）,最后一个通信参数（默认为1)]
         
         intangel=[0,0,0,0,0,0,0,0,0,0,0]
         if len(angels)!=11:
@@ -28,7 +28,7 @@ class Robotarm(object):
         send_bytes=bytes(intangel)
         self.ser.write(send_bytes)
 
-    def control(self, control_index):
+    def control(self, control_index):  #control_index包括：[柱坐标系theta,柱坐标系r,柱坐标系z,手腕角度,手指弯曲程度（5个），转动速度（5-30，越小越快）,最后一个通信参数(默认为1)]
         l1=10.5
         l2=7
         if len(control_index)!=11:
