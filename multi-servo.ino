@@ -1,4 +1,4 @@
-#include <Wire.h>
+ bux#include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 
 // called this way, it uses the default address 0x40
@@ -18,7 +18,7 @@ have!*/
 #define SERVOMAX  512 // this is the 'maximum' pulse length count (out of 4096)
 //这是“最大”脉冲长度计数（在4096中）
 #define NUM 20 
-double angel[9][2]={{60,145},{10,135},{15,95},{15,70},{55,125},{10,170},{10,170},{10,170},{10,170}};
+double angel[9][2]={{60,145},{10,135},{15,95},{15,70},{55,125},{0,180},{0,180},{0,180},{0,180}};
 unsigned char buffer[9];
 float now[9]={60,10,15,15,55,90,0,0,90};    //current angle
 //float now[9]={145,135,95,70,125,90,90,90,90};    //current angle
@@ -40,14 +40,14 @@ void setup() {
    pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
    ////模拟伺服在60赫兹更新下运行
 
-   for (int m=0;m<8;m++)
+   for (int32_t m=0;m<9;m++)
    {
-     angel[m][0]=angel[m][0]/180*(SERVOMAX-SERVOMIN)+SERVOMIN;
-     angel[m][1]=angel[m][1]/180*(SERVOMAX-SERVOMIN)+SERVOMIN;
+     angel[m][0]=angel[m][0]/180.0*(SERVOMAX-SERVOMIN)+SERVOMIN;
+     angel[m][1]=angel[m][1]/180.0*(SERVOMAX-SERVOMIN)+SERVOMIN;
    }
-   for (int m=0; m<9;m++)
+   for (int32_t m=0; m<9;m++)
     {
-      pwm.setPWM(m, 0, now[m]/180*(SERVOMAX-SERVOMIN)+SERVOMIN);  //initialize the angel
+      pwm.setPWM(m, 0, now[m]/180.0*(SERVOMAX-SERVOMIN)+SERVOMIN);  //initialize the angel
     }
     Serial.println("begin");
    
@@ -59,7 +59,7 @@ void control(float *next)
     {
       //Serial.print('|');
       //Serial.print(next[m]);
-      double myangel=next[m]/180*(SERVOMAX-SERVOMIN)+SERVOMIN;
+      double myangel=next[m]/180.0*(SERVOMAX-SERVOMIN)+SERVOMIN;
       //Serial.print(m);
       //Serial.println(myangel);
       if(myangel>angel[m][1] || myangel<angel[m][0])
