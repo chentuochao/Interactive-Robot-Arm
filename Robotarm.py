@@ -13,20 +13,27 @@ class Robotarm(object):
         if self.ser.isOpen()==0:
             print("Serial Open Error!!")
         else:
+            print("参数设置：串口=%s ，波特率=%d" % (self.PORT, self.RATE))
             self.send_control(initial_pos)
 
     def send_control(self, angels): #angels is the vector representing the angels of different servos [大拇指，食指，中指，无名指，小指，手腕旋转，第一节手臂，第二节手臂，转动速度（5-30，越小越快）,最后一个通信参数（默认为1)]
-        
+        angel_range=[[60,10,15,15,55,0,0,0,0],  #min
+        [145,135,95,70,125,180,180,180,180]]    #max
         intangel=[0,0,0,0,0,0,0,0,0,0,0]
         if len(angels)!=11:
             print("WRONG INPUT!!!")
             return
         for i in range(0,11):
             intangel[i]=round(angels[i])
-        #print(intangel)
+        for i in range(0,9):
+            if intangel[i]>angel_range[1][i] or intangel[0][i]<angel_range[0][i]:
+                print("Angel"+str(i)+": Invalid angle!!!")
+                return
+        print(intangel)
         send_bytes=bytes(intangel)
-        #print(send_bytes)
         self.ser.write(send_bytes)
+        if angels[10] == 1:
+            self.wait()
 
     def control(self, control_index):  #control_index包括：[柱坐标系theta,柱坐标系r,柱坐标系z,手腕角度,手指弯曲程度（5个），转动速度（5-30，越小越快）,最后一个通信参数(默认为1)]
         l1=10.5
@@ -39,7 +46,7 @@ class Robotarm(object):
         z=control_index[2]
         middle1=(math.pow(r,2)+math.pow(z,2)+math.pow(l1,2)-math.pow(l2,2))/(2*l1*math.sqrt(math.pow(r,2)+math.pow(z,2)))
         middle2=(math.pow(r,2)+math.pow(z,2)+math.pow(l2,2)-math.pow(l1,2))/(2*l2*math.sqrt(math.pow(r,2)+math.pow(z,2)))
-        if middle1>1 or middle2>1 or middle1<0 or middle2<0:
+        if middle1>1 or middle2>1 or middle1<-1 or middle2<-1:
             print("Position Error!!!")
             return
         #print(middle1,middle2)
@@ -71,8 +78,8 @@ class Robotarm(object):
         if theta0>180.01 or theta0<-0.01 or theta1>180.01 or theta1<-0.01 or theta2>180.01 or theta2<-0.01 or theta3>180.01 or theta3<-0.01:
             print("Out of angle range!!!")
             return
-        angel_range=[[60,10,15,15,55,10,10,10,10],  #min
-        [145,135,95,70,125,170,170,170,170]]    #max
+        angel_range=[[60,10,15,15,55,0,0,0,0],  #min
+        [145,135,95,70,125,180,180,180,180]]    #max
         finger=[0,0,0,0,0]
         for i in range(0,5):
             finger[i]=(angel_range[1][i]-angel_range[0][i])*control_index[4+i]+angel_range[0][i]
@@ -80,23 +87,92 @@ class Robotarm(object):
         self.send_control([finger[0],finger[1],finger[2],finger[3],finger[4],theta3,180-theta2,theta1,theta0,speed,control_index[10]])
         
     def prepare(self):
-        self.control([90, 0, 15, 0, 0.8, 0.8, 0.8, 0.8, 0.8, 30, 1])
+        self.control([90,0,15,90,0.8,0.8,0.8,0.8,0.8,30,1])
     def prepare2(self):
-        self.control([90, 16, 5, 0, 0.6, 0.6, 0.6, 0.6, 0.6, 7, 1])
+        self.control([90,16,5,90,0.6,0.6,0.6,0.6,0.6,7,1])
+    
+    def fuck(self):
+        '''
+        The gesture for "Fuck you !"
+        '''
+        mode=random.randint(0,1)
+        print(mode)
+        if mode == 0:
+            self.control([90, 10.5, 7, 0, 1, 1, 0, 1, 1, 12, 1])
+        else:
+            self.control([170, 6, 15, 90, 1, 0, 1, 1, 1, 12, 1])
+            self.wait()
+            for i in range(0, 2):
+                self.control([160, 4, 15, 90, 1, 0, 1, 1, 1, 15, 1])
+                self.control([160, 8, 15, 90, 1, 0, 1, 1, 1, 15, 1])
+            self.control([160, 6, 15, 90, 1, 0, 1, 1, 1, 12, 1])
+
+    def good(self):
+        '''
+        If you win, the robot will praise you
+        '''
+        self.send_control([60,135,95,70,125, 90,120,60,90,   12,1])
+
+    def rock(self):
+        '''
+        Rock and playing music
+        '''
+        self.control([10,10.5,7,90,1,0,1,1,0,15,1])
+        self.send_control([145,10,95,70,55, 90,0,0,10,   20,1])
+        self.send_control([145,10,95,70,55, 90,45,0,10,   20,1])
+        self.send_control([145,10,95,70,55, 90,0,0,10,   20,1])
+        self.send_control([145,10,95,70,55, 90,45,0,10,   20,1])
+
+        self.send_control([145,10,95,70,55, 90,180,70,10,   20,1])
+        self.send_control([145,10,95,70,55, 90,150,60,10,   20,1])
+        self.send_control([145,10,95,70,55, 90,180,70,10,   20,1])
+        self.send_control([145,10,95,70,55, 90,150,60,10,   20,1])
+
+        self.send_control([145,10,95,70,55, 90,180,70,10,   20,1])
+        self.send_control([145,10,95,70,55, 90,150,60,10,   20,1])
+        self.send_control([145,10,95,70,55, 90,180,70,10,   20,1])
+        self.send_control([145,10,95,70,55, 90,150,60,10,   20,1])
+
+        self.send_control([60,10,15,15,55, 90,45,25,90,   20,1])
+        #shake_hand()
+        self.send_control([60,115,85,60,115, 90,45,25,90,   20,1])
+
+        self.send_control([145,135,95,70,125, 180,20,0,90,   20,1])
+        self.send_control([145,115,85,60,115, 180,50,30,90,   20,1])
+    
+    def come_on(self, num):
+        '''
+        勾引小gay gay
+        '''
+        for i in range(0, num):
+            self.control([90,10.5,7,0,0,1,0,0,0,20,1])
+            self.control([90,10.5,7,0,0,0.3,0,0,0,20,1])
+
+        
+
+    
+    def reset(self):
+        final_index=[90,10.5,7,90,0,0,0,0,0,30,0]
+        self.control(final_index)
 
     def st_jd_b(self):
         mode=random.randint(0,2)
         if mode==0:  #stone
-            self.control([90,16,5,0,1,1,1,1,1,5,1])
+            self.control([90,16,5,90,1,1,1,1,1,5,1])
             print("stone")
         elif mode==1:  #cut
-            self.control([90,16,5,0,1,0,0,1,1,5,1])
+            self.control([90,16,5,90,1,0,0,1,1,5,1])
             print("cut")
         elif mode==2:  #napkin
-            self.control([90,16,5,0,0,0,0,0,0,5,1])
+            self.control([90,16,5,90,0,0,0,0,0,5,1])
             print("napkin")
-        return mode
 
+    def wait(self):
+        while 1:
+            data = self.readline()
+            if data!=b'' and data[0]==102:
+                print(data)
+                break
 
     def read(self,length):
         s=self.ser.read(length)
