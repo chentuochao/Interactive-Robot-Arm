@@ -14,7 +14,11 @@ import base64
 import urllib
 
 import sys
-sys.path.append('./')
+if sys.platform.lower().find('linux') != -1 or sys.platform.lower().find('darwin') != -1:
+    prefix = '../'
+elif sys.platform.lower().find('win32') != -1:
+    prefix = '..\\'
+sys.path.append(prefix)
 import time
 from Robotarm import Robotarm
 
@@ -90,7 +94,7 @@ def infer_fast(net, img, net_input_height_size, stride, upsample_ratio, cpu,
 def wait():
     while 1:
         data = arm.readline()
-        if data!=b'' and data[0]==102:
+        if data != b'' and data[0] == 102:
             print(data)
             break
 
@@ -105,6 +109,7 @@ class StateMachine:
         self.pose = pose
         self.move = False
         self.arm = arm
+        self.act = None
 
         self.limb_length = 100.0
         if self.pose[3][0] != -1 and self.pose[4][0] != -1:
@@ -129,18 +134,32 @@ class StateMachine:
         else:
             l_move_dist = -1
 
+        """
+        if left detected and right not detected:
+            if left hand moves for 5 frames:
+                robotarm act
+            after that and left hand doesn't move for 5 frames:
+                send to baidu and detect gesture
+
+        if right detected and left not detected
+            if right hand moves for 5 frames:
+                robotarm act
+            after that and right hand doesn't move for 5 frames:
+                send to baidu and detect gesture
+        """
+
+        # if right limb detected
         if r_move_dist != -1:
             if self.r_move_cnt < 5:
                 if r_move_dist > move_thrd:
                     self.r_move_cnt += 1
-                    if self.r_move_cnt == 3 and new_pose[2][1] < new_pose[4][1]:
+                    if self.r_move_cnt == 3 and new_pose[2][1] < new_pose[4][1]:    # moves down
                         self.random_act()
                 else:
                     self.r_move_cnt = 0
                     if self.move:
                         self.arm.prepare()
                         self.move = False
-
             else:
                 if r_move_dist <= move_thrd:
                     self.r_still_cnt += 1
@@ -153,13 +172,14 @@ class StateMachine:
                     maxx = min(img.shape[1]-1, int(centerx+1.5*self.limb_length))
                     miny = max(0, int(centery-1.5*self.limb_length))
                     maxy = min(img.shape[0]-1, int(centery+1.5*self.limb_length))
-                    if new_pose[2][1] < new_pose[4][1]: # wrist below shoulder
+                    if new_pose[2][1] < new_pose[4][1]:     # wrist below shoulder
                         self.trigger(img[miny:maxy, minx:maxx, :])
                     else:
                         self.r_move_cnt = 0
                         self.r_still_cnt = 0
-        
-        if l_move_dist != -1:
+
+        # if left limb detected
+        elif l_move_dist != -1:
             if self.l_move_cnt < 5:
                 if l_move_dist > move_thrd:
                     self.l_move_cnt += 1
@@ -170,7 +190,6 @@ class StateMachine:
                     if self.move:
                         self.arm.prepare()
                         self.move = False
-
             else:
                 if l_move_dist <= move_thrd:
                     self.l_still_cnt += 1
@@ -183,20 +202,20 @@ class StateMachine:
                     maxx = min(img.shape[1]-1, int(centerx+1.5*self.limb_length))
                     miny = max(0, int(centery-1.5*self.limb_length))
                     maxy = max(img.shape[0]-1, int(centery+1.5*self.limb_length))
-                    if new_pose[5][1] < new_pose[7][1]:
+                    if new_pose[5][1] < new_pose[7][1]:     # wrist below shoulder
                         self.trigger(img[miny:maxy, minx:maxx, :])
                     else:
                         self.r_move_cnt = 0
                         self.r_still_cnt = 0
         
         self.pose = new_pose
-        #print('ID {}: r_move_cnt {}, r_still_cnt {}, l_move_cnt {}, l_still_cnt {}'.format(self.id, self.r_move_cnt, self.r_still_cnt, self.l_move_cnt, self.l_still_cnt))
+        # print('ID {}: r_move_cnt {}, r_still_cnt {}, l_move_cnt {}, l_still_cnt {}'.format(self.id, self.r_move_cnt, self.r_still_cnt, self.l_move_cnt, self.l_still_cnt))
 
 
     def random_act(self):
         self.arm.prepare2()
         wait()
-        act = self.arm.st_jd_b()
+        act = self.arm.st_jd_b()        # rock-paper-scissors
         wait()
         if act == 0:
             self.act = 0
@@ -208,6 +227,9 @@ class StateMachine:
         
 
     def trigger(self, img):
+        """
+        send to baidu an image containing a gesture
+        """
         print(self.id, 'triggered')
 
         self.r_move_cnt = 0
@@ -217,7 +239,7 @@ class StateMachine:
         
         request_url = "https://aip.baidubce.com/rest/2.0/image-classify/v1/gesture"
 
-        cv2.imwrite('hand.jpg', img)
+        # cv2.imwrite('hand.jpg', img)
         base64_str = cv2.imencode('.jpg', img)[1].tostring()
         base64_str = base64.b64encode(base64_str)
 
@@ -231,23 +253,28 @@ class StateMachine:
         response = urllib.request.urlopen(request)
         content = response.read()
         if content:
-            gesture = self.get_gesture(content)
+            try:
+                gesture = self.get_gesture(content)
+            except Exception as e:
+                print(e)
+                gesture = None
         else: 
+            gesture = None
             print('No response')
 
         if gesture == self.act:
             print('Draw')
         elif (gesture == 2 and self.act == 0) or (gesture == 0 and self.act == 5) or (gesture == 5 and self.act == 2):
             print('You Lose!')
-            img = cv2.imread('img/lose.jpg')
-            cv2.imshow('Win or Lose', img)
-            cv2.waitKey(1000)
+            # img = cv2.imread('img/lose.jpg')
+            # cv2.imshow('Win or Lose', img)
+            # cv2.waitKey(1000)
             #time.sleep(3)
         else:
             print('You Win!')
-            img = cv2.imread('img/win.jpg')
-            cv2.imshow('Win or Lose', img)
-            cv2.waitKey(1000)
+            # img = cv2.imread('img/win.jpg')
+            # cv2.imshow('Win or Lose', img)
+            # cv2.waitKey(1000)
             #time.sleep(3)
         self.arm.prepare()
         wait()
@@ -262,6 +289,7 @@ class StateMachine:
         results = response['result']        
         for res in results:
             classname = res['classname']
+            print('your hand:', classname)
             if classname in StateMachine.word2num.keys():
                 output_number = StateMachine.word2num[classname]
                 output_cls = classname
@@ -337,6 +365,7 @@ def run_demo(net, image_provider, height_size, cpu, track_ids, arm):
                 stateMachines[pose.id] = StateMachine(pose.id, pose.keypoints, arm)
                 print('ID {} detected'.format(pose.id))
                 continue
+            # call stateMachine methods
             stateMachines[pose.id].update(pose.keypoints, img)
 
 
@@ -351,9 +380,9 @@ if __name__ == '__main__':
         description='''Lightweight human pose estimation python demo.
                        This is just for quick results preview.
                        Please, consider c++ demo for the best performance.''')
-    parser.add_argument('--checkpoint-path', type=str, required=True, help='path to the checkpoint')
+    parser.add_argument('--checkpoint-path', type=str, default='/media/bob-lytton/MyData/repos/torch_pose/checkpoint_iter_370000.pth', help='path to the checkpoint')
     parser.add_argument('--height-size', type=int, default=256, help='network input layer height size')
-    parser.add_argument('--video', type=str, default='', help='path to video file or camera id')
+    parser.add_argument('--video', type=str, default='0', help='path to video file or camera id')
     parser.add_argument('--images', nargs='+', default='', help='path to input image(s)')
     parser.add_argument('--cpu', action='store_true', help='run network inference on cpu')
     parser.add_argument('--track-ids', default=True, help='track poses ids')
@@ -374,20 +403,20 @@ if __name__ == '__main__':
 
     
     
-    angles=[60,10,15,15,55,90,0,0,90,30,1] #angels is the vector representing the angels of different servos []
+    angles=[60,10,15,15,55,90,0,0,90,30,1] #angles is the vector representing the angles of different servos []
     control_index=[90,10.5,11,90,1,1,1,1,1,30,1]
     arm = Robotarm(args.port, args.rate, angles)
 
     try:
-        while 1:
-            arm.control(control_index)
-            data = arm.readline()
-            if data!=b'':
-                print(data[0])
-                if data[0]==98:
-                    break
-        arm.prepare()
-        wait()
+        # while 1:
+        #     arm.control(control_index)
+        #     data = arm.readline()
+        #     if data!=b'':
+        #         print(data[0])
+        #         if data[0]==98:
+        #             break
+        # arm.prepare()
+        # wait()
         print('start')
         run_demo(net, frame_provider, args.height_size, args.cpu, args.track_ids, arm)
     except KeyboardInterrupt:

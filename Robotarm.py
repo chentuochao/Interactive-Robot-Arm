@@ -80,9 +80,9 @@ class Robotarm(object):
         self.send_control([finger[0],finger[1],finger[2],finger[3],finger[4],theta3,180-theta2,theta1,theta0,speed,control_index[10]])
         
     def prepare(self):
-        self.control([90,0,15,0,0.8,0.8,0.8,0.8,0.8,30,1])
+        self.control([90, 0, 15, 0, 0.8, 0.8, 0.8, 0.8, 0.8, 30, 1])
     def prepare2(self):
-        self.control([90,16,5,0,0.6,0.6,0.6,0.6,0.6,7,1])
+        self.control([90, 16, 5, 0, 0.6, 0.6, 0.6, 0.6, 0.6, 7, 1])
 
     def st_jd_b(self):
         mode=random.randint(0,2)
