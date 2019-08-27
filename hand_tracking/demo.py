@@ -107,11 +107,13 @@ class StateMachine:
         self.l_move_cnt = 0
         self.l_still_cnt = 0
         self.pose = pose
-        self.move = False
+        self.move = False   # if the arm is making action
         self.arm = arm
-        self.act = None
-        self.lock = 0
+        self.act = None     # the action the arm does
         self.word2num = {"Fist":0, "Two":2, "Five":5, "Rock":4, "ILY":3, "Insult":1, "Thumb up":6, "Unknown":7}
+        self.tracking_hand = None   # which hand to track
+        self.l_track = True     # tracking left hand or not
+        self.r_track = True     # tracking right hand or not
 
         self.limb_length = 100.0
         if self.pose[3][0] != -1 and self.pose[4][0] != -1:
@@ -233,7 +235,84 @@ ver 2.0
                     return
         """
 
-        # if right limb detected
+        if self.move is not True:   # robot arm is not moving
+            # if right limb detected
+            if r_move_dist != -1:
+                if r_move_dist > move_thrd:
+                    self.r_move_cnt += 1
+                else:
+                    self.r_move_cnt = 0
+                if self.r_move_cnt >= 5 and new_pose[2][1] < new_pose[4][1]:    # moving down
+                    if self.tracking_hand is not None:
+                        self.tracking_hand = 'right'
+                    else:
+                        self.tracking_hand = 'both'
+            else:
+                self.r_move_cnt = 0
+            # if left limb detected
+            if l_move_dist != -1:
+                if l_move_dist > move_thrd:
+                    self.l_move_cnt += 1
+                else:
+                    self.l_move_cnt = 0
+                if self.l_move_cnt >= 5 and new_pose[5][1] < new_pose[7][1]:    # moving down
+                    if self.tracking_hand is not None:
+                        self.tracking_hand = 'left'
+                    else:
+                        self.tracking_hand = 'both'
+            else:
+                self.l_move_cnt = 0
+            if tracking_hand is not None:
+                self.random_act()   # this will set self.move to be True
+                self.r_still_cnt = 0
+                self.l_still_cnt = 0
+        else:       # robot arm has already been moving
+            # left hand detected
+            if l_move_dist != -1:
+                if l_move_dist > move_thrd:
+                    self.l_track = False
+                    if self.tracking_hand == 'left':
+                        self.react(self.word2num['Unknown'])    # do not set self.move in this method
+                        self.move = False       # set self.move here, in the position where calls the method
+                        return
+                else:
+                    self.l_still_cnt += 1
+            else:
+                self.l_track = False
+                if self.tracking_hand == 'left':
+                    self.react(self.word2num['Unknown'])    # do not set self.move in this method
+                    self.move = False       # set self.move here, in the position where calls the method
+                    return
+            # right hand detected
+            if r_move_dist != -1:
+                if r_move_dist > move_thrd:
+                    self.r_track = False
+                    if self.tracking_hand == 'right':
+                        self.react(self.word2num['Unknown'])    # do not set self.move in this method
+                        self.move = False       # set self.move here, in the position where calls the method
+                        return
+                else:
+                    self.r_still_cnt += 1
+            else:
+                self.r_track = False
+                if self.tracking_hand == 'right':
+                    self.react(self.word2num['Unknown'])    # do not set self.move in this method
+                    self.move = False       # set self.move here, in the position where calls the method
+                    return
+            if self.l_still_cnt >= 5 and self.r_still_cnt < 5:
+                # at this time tracking_hand cannot be 'right'
+                # TODO: finish implementing this part of pseudo-code
+                centerx, centery = new_pose[7]
+                minx = max(0, int(centerx-2*self.limb_length))
+                maxx = min(img.shape[1]-1, int(centerx+2*self.limb_length))
+                miny = max(0, int(centery-2*self.limb_length))
+                maxy = max(img.shape[0]-1, int(centery+2*self.limb_length))
+                if new_pose[5][1] < new_pose[7][1]:     # wrist below shoulder
+                    self.trigger(img[miny:maxy, minx:maxx, :])
+                else:
+                    self.r_move_cnt = 0
+                    self.r_still_cnt = 0
+        """
         if r_move_dist != -1:
             if self.r_move_cnt < 5:
                 if r_move_dist > move_thrd:
@@ -292,7 +371,7 @@ ver 2.0
                     else:
                         self.r_move_cnt = 0
                         self.r_still_cnt = 0
-        
+        """
         self.pose = new_pose
         # print('ID {}: r_move_cnt {}, r_still_cnt {}, l_move_cnt {}, l_still_cnt {}'.format(self.id, self.r_move_cnt, self.r_still_cnt, self.l_move_cnt, self.l_still_cnt))
 
