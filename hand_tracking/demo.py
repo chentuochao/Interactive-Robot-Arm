@@ -110,6 +110,8 @@ class StateMachine:
         self.move = False
         self.arm = arm
         self.act = None
+        self.lock = 0
+        self.word2num = {"Fist":0, "Two":2, "Five":5, "Rock":4, "ILY":3, "Insult":1, "Thumb up":6, "Unknown":7}
 
         self.limb_length = 100.0
         if self.pose[3][0] != -1 and self.pose[4][0] != -1:
@@ -135,6 +137,8 @@ class StateMachine:
             l_move_dist = -1
 
         """
+pseudo-code
+ver 1.0
         if left detected and right not detected:
             if left hand moves for 5 frames:
                 robotarm act
@@ -146,6 +150,87 @@ class StateMachine:
                 robotarm act
             after that and right hand doesn't move for 5 frames:
                 send to baidu and detect gesture
+
+        if both detected:
+            find which moves
+            robotarm act
+        
+
+ver 2.0
+        need sign: self.act, self.tracking_hand
+        if not act:
+            if left hand move detected:
+                record left hand move
+                if move > 5 consecutive frames:
+                    if tracking_hand == None:
+                        tracking_hand = left
+                    else:
+                        tracking_hand = both
+            if right hand move detected:
+                record right hand move
+                if move > consecutive frames:
+                    if tracking_hand == None:
+                        tracking_hand = right
+                    else:
+                        tracking_hand = both
+            if tracking_hand != None
+                robotarm act
+                left hand stay frame cnt = 0
+                right hand stay frame cnt = 0
+        elif act:
+
+            # after that find the hand that stays more than 5 consecutive frames
+            # send the hand image to baidu and detect gesture
+            # robotarm react due to the gesture
+
+            if left hand detected:
+                if left hand moves:                 # threshold bigger
+                    stop tracking left hand         # then in later iterations it all stops
+                    if tracking_hand == left:
+                        react(Unknown gesture)
+                        act = False
+                        return
+                else:
+                    record left hand stays
+            if right hand detected:
+                if right hand moves:                # threshold bigger
+                    stop tracking right hand        # then in later iterations it all stops
+                    if tracking_hand == right
+                        react(Unknown gesture)
+                        act = False
+                        return
+                else:
+                    record right hand stays
+
+            if (left hand stays more than 5 consecutive frames) and !(right hand stays more than 5 consecutive frames):
+                # at this time tracking_hand cannot be 'right'
+                send left hand to baidu and return gesture
+                react(gesture)
+                act = False
+                return
+            elif !(left hand stays more than 5 consecutive frames) and (right hand stays more than 5 consecutive frames):
+                # at this time tracking_hand cannot be 'left'
+                right - same as above
+            elif (left hand stays more than 5 consecutive frames) and (right hand stays more than 5 consecutive frames):
+                # at this time tracking_hand can be any one
+                if tracking_hand == left:
+                    left -- same as above
+                elif tracking_hand == right:
+                    right -- same as above
+                else:
+                    send both to baidu and get both gestures            # bigger image part
+                    if gesture[0] and gesture[1] are all in (0,2,5):
+                        react(break-the-rule)
+                    elif gesture[0] or gesture[1] in (0,2,5):
+                        react(gesture-in-game)
+                    elif gesture[0] and gesture[1] not in (7):
+                        react(random(gesture[0], gesture[1])
+                    elif gesture[0] and gesture[1] in (7):
+                        react(Unknown-gesture)
+                    else:
+                        react(gesture-not-in-(7))
+                    act = False
+                    return
         """
 
         # if right limb detected
@@ -168,10 +253,10 @@ class StateMachine:
                     #self.r_still_cnt = 0
                 if self.r_still_cnt == 5:
                     centerx, centery = new_pose[4]
-                    minx = max(0, int(centerx-1.5*self.limb_length))
-                    maxx = min(img.shape[1]-1, int(centerx+1.5*self.limb_length))
-                    miny = max(0, int(centery-1.5*self.limb_length))
-                    maxy = min(img.shape[0]-1, int(centery+1.5*self.limb_length))
+                    minx = max(0, int(centerx-2*self.limb_length))
+                    maxx = min(img.shape[1]-1, int(centerx+2*self.limb_length))
+                    miny = max(0, int(centery-2*self.limb_length))
+                    maxy = min(img.shape[0]-1, int(centery+2*self.limb_length))
                     if new_pose[2][1] < new_pose[4][1]:     # wrist below shoulder
                         self.trigger(img[miny:maxy, minx:maxx, :])
                     else:
@@ -179,7 +264,7 @@ class StateMachine:
                         self.r_still_cnt = 0
 
         # if left limb detected
-        elif l_move_dist != -1:
+        if l_move_dist != -1:
             if self.l_move_cnt < 5:
                 if l_move_dist > move_thrd:
                     self.l_move_cnt += 1
@@ -198,10 +283,10 @@ class StateMachine:
                     self.l_still_cnt = 0
                 if self.l_still_cnt == 5:
                     centerx, centery = new_pose[7]
-                    minx = max(0, int(centerx-1.5*self.limb_length))
-                    maxx = min(img.shape[1]-1, int(centerx+1.5*self.limb_length))
-                    miny = max(0, int(centery-1.5*self.limb_length))
-                    maxy = max(img.shape[0]-1, int(centery+1.5*self.limb_length))
+                    minx = max(0, int(centerx-2*self.limb_length))
+                    maxx = min(img.shape[1]-1, int(centerx+2*self.limb_length))
+                    miny = max(0, int(centery-2*self.limb_length))
+                    maxy = max(img.shape[0]-1, int(centery+2*self.limb_length))
                     if new_pose[5][1] < new_pose[7][1]:     # wrist below shoulder
                         self.trigger(img[miny:maxy, minx:maxx, :])
                     else:
@@ -224,11 +309,41 @@ class StateMachine:
         elif act == 2:
             self.act == 5
         self.move = True
-        
+
+    def react(self, gesture):
+        """
+        react to player's gesture
+        support: Fist, Two, Five, ILY, Rock, Insult, Thumb up, Unknown
+        """
+        if gesture == self.act:
+            print('Draw')
+        elif (gesture == 2 and self.act == 0) or (gesture == 0 and self.act == 5) or (gesture == 5 and self.act == 2):
+            print('You Lose!')
+            # act(V-shape)
+            # img = cv2.imread('img/lose.jpg')
+            # cv2.imshow('Win or Lose', img)
+            # cv2.waitKey(1000)
+            #time.sleep(3)
+        elif (gesture == 2 and self.act == 5) or (gesture == 0 and self.act == 2) or (gesture == 5 and self.act == 0):
+            print('You Win!')
+            # act(thumb-up)
+            # img = cv2.imread('img/win.jpg')
+            # cv2.imshow('Win or Lose', img)
+            # cv2.waitKey(1000)
+            #time.sleep(3)
+        elif gesture == 4 or gesture == 3:      # Rock or ILY
+            print("Yo-yo!!")
+            # act(rock)
+        elif gesture == 1:                      # Insult
+            print("No-no-no!!")
+            # act(random(insult or no-no-no))
+        else:                                   # Unknown
+            print("I don't know what you say...")
+            # act(don-know)
 
     def trigger(self, img):
         """
-        send to baidu an image containing a gesture
+        send to baidu an image containing a gesture and react
         """
         print(self.id, 'triggered')
 
@@ -262,30 +377,18 @@ class StateMachine:
             gesture = None
             print('No response')
 
-        if gesture == self.act:
-            print('Draw')
-        elif (gesture == 2 and self.act == 0) or (gesture == 0 and self.act == 5) or (gesture == 5 and self.act == 2):
-            print('You Lose!')
-            # img = cv2.imread('img/lose.jpg')
-            # cv2.imshow('Win or Lose', img)
-            # cv2.waitKey(1000)
-            #time.sleep(3)
-        else:
-            print('You Win!')
-            # img = cv2.imread('img/win.jpg')
-            # cv2.imshow('Win or Lose', img)
-            # cv2.waitKey(1000)
-            #time.sleep(3)
+        self.react(gesture)
         self.arm.prepare()
         wait()
 
     def get_gesture(self, response):
         """
-        0-rock, 2-scissor, 5-paper
+        0-fist, 2-scissor, 5-paper, "Rock":4, "ILY":3, "Insult":1, "Thumb up":6, "Unknown":7
         """
-        
         output_number = None
         output_cls = None
+        response = eval(response)       # bytes to str to dict
+        print("response from baidu:", response) 
         results = response['result']        
         for res in results:
             classname = res['classname']
@@ -367,8 +470,7 @@ def run_demo(net, image_provider, height_size, cpu, track_ids, arm):
                 continue
             # call stateMachine methods
             stateMachines[pose.id].update(pose.keypoints, img)
-
-
+            
         cv2.imshow('Lightweight Human Pose Estimation Python Demo', img)
         key = cv2.waitKey(33)
         if key == 27:  # esc
