@@ -91,13 +91,6 @@ def infer_fast(net, img, net_input_height_size, stride, upsample_ratio, cpu,
 
     return heatmaps, pafs, scale, pad
 
-def wait():
-    while 1:
-        data = arm.readline()
-        if data != b'' and data[0] == 102:
-            print(data)
-            break
-
 class StateMachine:
     
     def __init__(self, id, pose, arm):
@@ -139,8 +132,8 @@ class StateMachine:
             l_move_dist = -1
 
         """
-pseudo-code
-ver 1.0
+    pseudo-code
+    ver 1.0
         if left detected and right not detected:
             if left hand moves for 5 frames:
                 robotarm act
@@ -158,7 +151,7 @@ ver 1.0
             robotarm act
         
 
-ver 2.0
+    ver 2.0
         need sign: self.act, self.tracking_hand
         if not act:
             if left hand move detected:
@@ -299,19 +292,45 @@ ver 2.0
                     self.react(self.word2num['Unknown'])    # do not set self.move in this method
                     self.move = False       # set self.move here, in the position where calls the method
                     return
+            # left hand move
             if self.l_still_cnt >= 5 and self.r_still_cnt < 5:
                 # at this time tracking_hand cannot be 'right'
-                # TODO: finish implementing this part of pseudo-code
-                centerx, centery = new_pose[7]
-                minx = max(0, int(centerx-2*self.limb_length))
-                maxx = min(img.shape[1]-1, int(centerx+2*self.limb_length))
-                miny = max(0, int(centery-2*self.limb_length))
-                maxy = max(img.shape[0]-1, int(centery+2*self.limb_length))
-                if new_pose[5][1] < new_pose[7][1]:     # wrist below shoulder
-                    self.trigger(img[miny:maxy, minx:maxx, :])
-                else:
-                    self.r_move_cnt = 0
-                    self.r_still_cnt = 0
+                centerx, centery = new_pose[7]  # l_wri position
+                minx = max(0,                int(centerx - 2*self.limb_length))
+                maxx = min(img.shape[1] - 1, int(centerx + 2*self.limb_length))
+                miny = max(0,                int(centery - 2*self.limb_length))
+                maxy = max(img.shape[0] - 1, int(centery + 2*self.limb_length))
+                gesture = self.trigger(img[miny:maxy, minx:maxx, :])
+                self.react(gesture)
+                self.arm.prepare()
+                self.move = False
+            elif self.l_still_cnt < 5 and self.r_still_cnt >= 5:
+                # at this time tracking_hand cannot be 'left'
+                centerx, centery = new_pose[4]  # r_wri position
+                minx = max(0,                int(centerx - 2*self.limb_length))
+                maxx = min(img.shape[1] - 1, int(centerx + 2*self.limb_length))
+                miny = max(0,                int(centery - 2*self.limb_length))
+                maxy = max(img.shape[0] - 1, int(centery + 2*self.limb_length))
+                gesture = self.trigger(img[miny:maxy, minx:maxx, :])    
+                self.react(gesture)
+                self.arm.prepare()
+                self.move = False
+            elif self.l_still_cnt >= 5 and self.r_still_cnt >= 5:
+                if self.tracking_hand == 'left':
+                    centerx, centery = new_pose[7]  # l_wri position
+                elif self.tracking_hand == 'right':
+                    centerx, centery = new_pose[4]  # r_wri position
+                else:   # tracking_hand == 'both
+                    centerx, centery = (new_pose[4] + new_pose[7]) / 2
+                minx = max(0,                int(centerx - 2*self.limb_length))
+                maxx = min(img.shape[1] - 1, int(centerx + 2*self.limb_length))
+                miny = max(0,                int(centery - 2*self.limb_length))
+                maxy = max(img.shape[0] - 1, int(centery + 2*self.limb_length))
+                gesture = self.trigger(img[miny:maxy, minx:maxx, :])
+                self.react(gesture)
+                self.arm.prepare()
+                self.move = False
+                
         """
         if r_move_dist != -1:
             if self.r_move_cnt < 5:
@@ -378,9 +397,7 @@ ver 2.0
 
     def random_act(self):
         self.arm.prepare2()
-        wait()
         act = self.arm.st_jd_b()        # rock-paper-scissors
-        wait()
         if act == 0:
             self.act = 0
         elif act == 1:
@@ -455,10 +472,7 @@ ver 2.0
         else: 
             gesture = None
             print('No response')
-
-        self.react(gesture)
-        self.arm.prepare()
-        wait()
+        return gesture
 
     def get_gesture(self, response):
         """
@@ -597,7 +611,6 @@ if __name__ == '__main__':
         #         if data[0]==98:
         #             break
         # arm.prepare()
-        # wait()
         print('start')
         run_demo(net, frame_provider, args.height_size, args.cpu, args.track_ids, arm)
     except KeyboardInterrupt:
