@@ -148,6 +148,13 @@ class Robotarm(object):
         '''
         self.control([90, 17, 3, 90, 0, 1, 1, 1, 1, 10, 1])
 
+    def shake_hand(self):
+        while 1:
+            data = self.readline()
+            if data!=b'' and data[0]==115:
+                print(data)
+                break
+
     def Rock(self):
         '''
         Rock and playing music
@@ -170,7 +177,7 @@ class Robotarm(object):
         self.send_control([145,10,95,70,55, 90,150,60,10,   20,1])
         '''
         self.send_control([60,10,15,15,55, 90,45,25,90,   20,1])
-        #shake_hand()
+        self.shake_hand()
         self.send_control([60,115,85,60,115, 90,45,25,90,   20,1])
         time.sleep(0.5)
         self.send_control([145,135,95,70,125, 180,20,0,90,   20,1])
