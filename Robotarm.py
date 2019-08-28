@@ -6,7 +6,6 @@ import time
 
 import pygame
 import serial
-from playsound import playsound
 import music
 
 pi=3.141593
@@ -159,12 +158,12 @@ class Robotarm(object):
         '''
         Rock and playing music
         '''
-        music.play(self.file)
+        #music.play(self.file)
         self.control([10,10.5,7,90,1,0,1,1,0,15,1])
         self.send_control([145,10,95,70,55, 90,0,0,10,   5,1])
-        self.send_control([145,10,95,70,55, 90,45,0,10,   5,1])
+        self.send_control([145,10,95,70,55, 90,30,0,10,   5,1])
         self.send_control([145,10,95,70,55, 90,0,0,10,   5,1])
-        self.send_control([145,10,95,70,55, 90,45,0,10,   5,1])
+        self.send_control([145,10,95,70,55, 90,30,0,10,   5,1])
         '''
         self.send_control([145,10,95,70,55, 90,180,70,10,   20,1])
         self.send_control([145,10,95,70,55, 90,150,60,10,   20,1])
@@ -176,15 +175,16 @@ class Robotarm(object):
         self.send_control([145,10,95,70,55, 90,180,70,10,   20,1])
         self.send_control([145,10,95,70,55, 90,150,60,10,   20,1])
         '''
-        self.send_control([60,10,15,15,55, 90,45,25,90,   20,1])
+        self.send_control([60,10,15,15,55, 90,45,0,90,   20,1])
+        print("Waiting to shake hand")
         self.shake_hand()
-        self.send_control([60,115,85,60,115, 90,45,25,90,   20,1])
+        self.send_control([60,115,85,60,115, 90,45,0,90,   10,1])
         time.sleep(0.5)
-        self.send_control([145,135,95,70,125, 180,20,0,90,   20,1])
+        self.send_control([145,135,95,70,125, 180,100,50,90,   10,1])
         time.sleep(0.5)
-        self.send_control([145,115,95,60,115, 180,50,30,90,   20,1])
+        self.send_control([145,135,95,70,125, 180,50,0,90,   15,1])
     
-    def come_on(self, num):
+    def come_on(self, num = 2):
         '''
         勾引小gay gay
         '''
@@ -217,7 +217,7 @@ class Robotarm(object):
         while 1:
             data = self.readline()
             if data!=b'' and data[0]==102:
-                # print(data)
+                print(data)
                 break
 
     def read(self,length):
