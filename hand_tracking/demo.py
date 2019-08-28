@@ -208,7 +208,10 @@ class StateMachine:
                     else:
                         self.r_move_cnt = 0
                         self.r_still_cnt = 0
-        
+
+        if l_move_dist == -1 and r_move_dist == -1:
+            self.arm.come_on(2)
+
         self.pose = new_pose
         #print('ID {}: r_move_cnt {}, r_still_cnt {}, l_move_cnt {}, l_still_cnt {}'.format(self.id, self.r_move_cnt, self.r_still_cnt, self.l_move_cnt, self.l_still_cnt))
 
