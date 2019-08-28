@@ -210,10 +210,10 @@ class StateMachine:
                         self.r_move_cnt = 0
                         self.r_still_cnt = 0
 
-        if l_move_dist == -1 and r_move_dist == -1:
-            if random.random() < 0.5:
-                self.arm.come_on(2)
-            self.arm.prepare()
+        # if l_move_dist == -1 and r_move_dist == -1:
+        #     if random.random() < 0.5:
+        #         self.arm.come_on(2)
+        #     self.arm.prepare()
 
         self.pose = new_pose
         #print('ID {}: r_move_cnt {}, r_still_cnt {}, l_move_cnt {}, l_still_cnt {}'.format(self.id, self.r_move_cnt, self.r_still_cnt, self.l_move_cnt, self.l_still_cnt))
@@ -247,6 +247,7 @@ class StateMachine:
         print("GESTURE:", gesture, "SELF.ACT:", self.act)
         # exit()
         if gesture in (0,2,5) and gesture == self.act:
+            self.arm.come_on(2)
             print('Draw')
         elif (gesture == 2 and self.act == 0) or (gesture == 0 and self.act == 5) or (gesture == 5 and self.act == 2):
             print('You Lose!')
