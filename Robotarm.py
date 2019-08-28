@@ -14,7 +14,21 @@ class Robotarm(object):
             print("Serial Open Error!!")
         else:
             print("参数设置：串口=%s ，波特率=%d" % (self.PORT, self.RATE))
-            self.send_control(initial_pos)
+            send_bytes = bytes(initial_pos)
+            self.ser.write(send_bytes)
+
+    def initial_set(self):
+        while 1:
+            send_bytes = bytes([60,10,15,15,55,0,0,0,90,30,1])
+            self.ser.write(send_bytes)
+            #print("send successfully")
+            data = self.readline()
+            print(data)
+            if data!=b'':
+                #print(data[0])
+                if data[0]==98:
+                    break
+        print("begin")
 
     def send_control(self, angels): #angels is the vector representing the angels of different servos [大拇指，食指，中指，无名指，小指，手腕旋转，第一节手臂，第二节手臂，转动速度（5-30，越小越快）,最后一个通信参数（默认为1)]
         angel_range=[[60,10,15,15,55,0,0,0,0],  #min
@@ -26,7 +40,7 @@ class Robotarm(object):
         for i in range(0,11):
             intangel[i]=round(angels[i])
         for i in range(0,9):
-            if intangel[i]>angel_range[1][i] or intangel[0][i]<angel_range[0][i]:
+            if intangel[i]>angel_range[1][i] or intangel[i]<angel_range[0][i]:
                 print("Angel"+str(i)+": Invalid angle!!!")
                 return
         print(intangel)
@@ -107,13 +121,19 @@ class Robotarm(object):
                 self.control([160, 8, 15, 90, 1, 0, 1, 1, 1, 15, 1])
             self.control([160, 6, 15, 90, 1, 0, 1, 1, 1, 12, 1])
 
-    def good(self):
+    def Robot_win(self):
+        '''
+        If you win, the robot will praise you
+        '''
+        self.control([90, 10.5, 7, 180, 1, 0, 0, 1, 1, 12, 1])
+
+    def Human_win(self):
         '''
         If you win, the robot will praise you
         '''
         self.send_control([60,135,95,70,125, 90,120,60,90,   12,1])
 
-    def rock(self):
+    def Rock(self):
         '''
         Rock and playing music
         '''
@@ -145,8 +165,8 @@ class Robotarm(object):
         勾引小gay gay
         '''
         for i in range(0, num):
-            self.control([90,10.5,7,0,0,1,0,0,0,20,1])
-            self.control([90,10.5,7,0,0,0.3,0,0,0,20,1])
+            self.control([90, 15, 6, 0, 1, 0,   1, 1, 1, 10, 1])
+            self.control([90, 15, 6, 0, 1, 0.9, 1, 1, 1, 10, 1])
 
         
 
