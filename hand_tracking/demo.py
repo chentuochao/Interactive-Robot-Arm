@@ -12,6 +12,7 @@ from val import normalize, pad_width
 
 import base64
 import urllib
+import random
 
 import sys
 if sys.platform.lower().find('linux') != -1 or sys.platform.lower().find('darwin') != -1:
@@ -210,7 +211,9 @@ class StateMachine:
                         self.r_still_cnt = 0
 
         if l_move_dist == -1 and r_move_dist == -1:
-            self.arm.come_on(2)
+            if random.random() < 0.5:
+                self.arm.come_on(2)
+            self.arm.prepare()
 
         self.pose = new_pose
         #print('ID {}: r_move_cnt {}, r_still_cnt {}, l_move_cnt {}, l_still_cnt {}'.format(self.id, self.r_move_cnt, self.r_still_cnt, self.l_move_cnt, self.l_still_cnt))
