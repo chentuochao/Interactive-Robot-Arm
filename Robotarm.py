@@ -23,7 +23,7 @@ class Robotarm(object):
             self.ser.write(send_bytes)
             #print("send successfully")
             data = self.readline()
-            print(data)
+            # print(data)
             if data!=b'':
                 #print(data[0])
                 if data[0]==98:
@@ -43,7 +43,7 @@ class Robotarm(object):
             if intangel[i]>angel_range[1][i] or intangel[i]<angel_range[0][i]:
                 print("Angel"+str(i)+": Invalid angle!!!")
                 return
-        print(intangel)
+        # print(intangel)
         send_bytes=bytes(intangel)
         self.ser.write(send_bytes)
         if angels[10] == 1:
@@ -188,10 +188,11 @@ class Robotarm(object):
             print("napkin")
 
     def wait(self):
-        while 1:
+        #while 1:
+        while 0:
             data = self.readline()
             if data!=b'' and data[0]==102:
-                print(data)
+                # print(data)
                 break
 
     def read(self,length):

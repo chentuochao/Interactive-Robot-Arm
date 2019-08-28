@@ -103,10 +103,11 @@ class StateMachine:
         self.move = False   # if the arm is making action
         self.arm = arm
         self.act = None     # the action the arm does
-        self.word2num = {"Fist":0, "Two":2, "Five":5, "Rock":4, "ILY":3, "Insult":1, "Thumb up":6, "Unknown":7}
+        self.word2num = {"Fist":0, "Two":2, "Three": 2, "Five":5, "Rock":4, "ILY":3, "Insult":1, "Thumb up":6, "Unknown":7}
         self.tracking_hand = None   # which hand to track
         self.l_track = True     # tracking left hand or not
         self.r_track = True     # tracking right hand or not
+        self.lock = 0
 
         self.limb_length = 100.0
         if self.pose[3][0] != -1 and self.pose[4][0] != -1:
@@ -116,17 +117,28 @@ class StateMachine:
     
     def update(self, new_pose, img):
         # r_elb-3, r-wri-4, l_elb-6, l_wri-7
+        #print("self.move =", self.move)
+
+        if self.lock != 0:
+            self.lock += 1
+        if self.lock == 20:
+            self.lock = 0
+            self.arm.prepare()
+
+
         if new_pose[4][0] != -1 and new_pose[3][0] != -1:
             self.limb_length = np.linalg.norm(new_pose[4]-new_pose[3])
         elif new_pose[6][0] != -1 and new_pose[7][0] != -1:
-            self.limb_length = np.linalg.norm(new_pose[6]-new_pose[7])
+            self.limb_length = max(self.limb_length, np.linalg.norm(new_pose[6]-new_pose[7]))
 
-        move_thrd = self.limb_length / 20
-        if new_pose[4][0] != -1:
+        move_thrd = max(self.limb_length / 10, 5)
+        move_frame_thrd = 4
+        still_frame_thrd = 3
+        if new_pose[4][0] != -1 and self.pose[4][0]:
             r_move_dist = np.linalg.norm(new_pose[4] - self.pose[4])
         else:
             r_move_dist = -1
-        if new_pose[7][0] != -1:
+        if new_pose[7][0] != -1 and self.pose[7][0]:
             l_move_dist = np.linalg.norm(new_pose[7] - self.pose[7])
         else:
             l_move_dist = -1
@@ -227,8 +239,8 @@ class StateMachine:
                     act = False
                     return
         """
-
-        if self.move is not True:   # robot arm is not moving
+        """
+        if self.move is False:   # robot arm is not moving
             # if right limb detected
             if r_move_dist != -1:
                 if r_move_dist > move_thrd:
@@ -255,7 +267,7 @@ class StateMachine:
                         self.tracking_hand = 'both'
             else:
                 self.l_move_cnt = 0
-            if tracking_hand is not None:
+            if self.tracking_hand is not None:
                 self.random_act()   # this will set self.move to be True
                 self.r_still_cnt = 0
                 self.l_still_cnt = 0
@@ -266,7 +278,9 @@ class StateMachine:
                     self.l_track = False
                     if self.tracking_hand == 'left':
                         self.react(self.word2num['Unknown'])    # do not set self.move in this method
+                        self.arm.prepare()
                         self.move = False       # set self.move here, in the position where calls the method
+                        self.tracking_hand = None
                         return
                 else:
                     self.l_still_cnt += 1
@@ -274,7 +288,9 @@ class StateMachine:
                 self.l_track = False
                 if self.tracking_hand == 'left':
                     self.react(self.word2num['Unknown'])    # do not set self.move in this method
+                    self.arm.prepare()
                     self.move = False       # set self.move here, in the position where calls the method
+                    self.tracking_hand = None
                     return
             # right hand detected
             if r_move_dist != -1:
@@ -282,7 +298,9 @@ class StateMachine:
                     self.r_track = False
                     if self.tracking_hand == 'right':
                         self.react(self.word2num['Unknown'])    # do not set self.move in this method
+                        self.arm.prepare()
                         self.move = False       # set self.move here, in the position where calls the method
+                        self.tracking_hand = None
                         return
                 else:
                     self.r_still_cnt += 1
@@ -290,7 +308,9 @@ class StateMachine:
                 self.r_track = False
                 if self.tracking_hand == 'right':
                     self.react(self.word2num['Unknown'])    # do not set self.move in this method
+                    self.arm.prepare()
                     self.move = False       # set self.move here, in the position where calls the method
+                    self.tracking_hand = None
                     return
             # left hand move
             if self.l_still_cnt >= 5 and self.r_still_cnt < 5:
@@ -304,6 +324,7 @@ class StateMachine:
                 self.react(gesture)
                 self.arm.prepare()
                 self.move = False
+                self.tracking_hand = None
             elif self.l_still_cnt < 5 and self.r_still_cnt >= 5:
                 # at this time tracking_hand cannot be 'left'
                 centerx, centery = new_pose[4]  # r_wri position
@@ -315,6 +336,7 @@ class StateMachine:
                 self.react(gesture)
                 self.arm.prepare()
                 self.move = False
+                self.tracking_hand = None
             elif self.l_still_cnt >= 5 and self.r_still_cnt >= 5:
                 if self.tracking_hand == 'left':
                     centerx, centery = new_pose[7]  # l_wri position
@@ -330,72 +352,89 @@ class StateMachine:
                 self.react(gesture)
                 self.arm.prepare()
                 self.move = False
-                
-        """
-        if r_move_dist != -1:
-            if self.r_move_cnt < 5:
-                if r_move_dist > move_thrd:
+                self.tracking_hand = None
+        """        
+        
+        # if right hand detected
+        if r_move_dist != -1 and (self.lock == 0 or not self.r_move_cnt == 0):
+            if self.r_move_cnt < move_frame_thrd:
+                if r_move_dist > move_thrd and new_pose[4][1] > self.pose[4][1]:
                     self.r_move_cnt += 1
-                    if self.r_move_cnt == 3 and new_pose[2][1] < new_pose[4][1]:    # moves down
-                        self.random_act()
+                    if self.r_move_cnt == move_frame_thrd and new_pose[2][1] < new_pose[4][1]:    # moves down
+                        self.random_act('right')
                 else:
                     self.r_move_cnt = 0
-                    if self.move:
-                        self.arm.prepare()
-                        self.move = False
+                    # if self.move:
+                    #     self.arm.prepare()
+                    #     self.move = False
             else:
                 if r_move_dist <= move_thrd:
                     self.r_still_cnt += 1
                 #else:
                     #self.r_move_cnt = 0
                     #self.r_still_cnt = 0
-                if self.r_still_cnt == 5:
+                if self.r_still_cnt == still_frame_thrd:
                     centerx, centery = new_pose[4]
-                    minx = max(0, int(centerx-2*self.limb_length))
-                    maxx = min(img.shape[1]-1, int(centerx+2*self.limb_length))
-                    miny = max(0, int(centery-2*self.limb_length))
-                    maxy = min(img.shape[0]-1, int(centery+2*self.limb_length))
+                    minx = max(0, int(centerx-1.5*self.limb_length))
+                    maxx = min(img.shape[1]-1, int(centerx+1.5*self.limb_length))
+                    miny = max(0, int(centery-1.5*self.limb_length))
+                    maxy = min(img.shape[0]-1, int(centery+1.5*self.limb_length))
                     if new_pose[2][1] < new_pose[4][1]:     # wrist below shoulder
-                        self.trigger(img[miny:maxy, minx:maxx, :])
+                        gesture = self.trigger(img[miny:maxy, minx:maxx, :])
+                        self.react(gesture)
+                        self.arm.prepare()
+                        self.move = False
                     else:
                         self.r_move_cnt = 0
                         self.r_still_cnt = 0
 
         # if left limb detected
-        if l_move_dist != -1:
-            if self.l_move_cnt < 5:
-                if l_move_dist > move_thrd:
+        if l_move_dist != -1 and (self.lock == 0 or not self.l_move_cnt == 0):
+            if self.l_move_cnt < move_frame_thrd:
+                if l_move_dist > move_thrd and new_pose[7][1] > self.pose[7][1]: 
                     self.l_move_cnt += 1
-                    if self.l_move_cnt == 3 and new_pose[5][1] < new_pose[7][1]:
-                        self.random_act()
+                    if self.l_move_cnt == move_frame_thrd and new_pose[5][1] < new_pose[7][1]:
+                        self.random_act('left')
                 else:
                     self.l_move_cnt = 0
-                    if self.move:
-                        self.arm.prepare()
-                        self.move = False
+                    # if self.move:
+                    #     self.arm.prepare()
+                    #     self.move = False
             else:
                 if l_move_dist <= move_thrd:
                     self.l_still_cnt += 1
-                else:
-                    self.l_move_cnt = 0
-                    self.l_still_cnt = 0
-                if self.l_still_cnt == 5:
+                #else:
+                #    self.l_move_cnt = 0
+                #    self.l_still_cnt = 0
+                if self.l_still_cnt == still_frame_thrd:
                     centerx, centery = new_pose[7]
-                    minx = max(0, int(centerx-2*self.limb_length))
-                    maxx = min(img.shape[1]-1, int(centerx+2*self.limb_length))
-                    miny = max(0, int(centery-2*self.limb_length))
-                    maxy = max(img.shape[0]-1, int(centery+2*self.limb_length))
+                    minx = max(0, int(centerx-1.5*self.limb_length))
+                    maxx = min(img.shape[1]-1, int(centerx+1.5*self.limb_length))
+                    miny = max(0, int(centery-1.5*self.limb_length))
+                    maxy = max(img.shape[0]-1, int(centery+1.5*self.limb_length))
                     if new_pose[5][1] < new_pose[7][1]:     # wrist below shoulder
-                        self.trigger(img[miny:maxy, minx:maxx, :])
+                        gesture = self.trigger(img[miny:maxy, minx:maxx, :])
+                        self.react(gesture)
+                        self.arm.prepare()
+                        self.move = False
                     else:
                         self.r_move_cnt = 0
                         self.r_still_cnt = 0
-        """
+        
         self.pose = new_pose
-        # print('ID {}: r_move_cnt {}, r_still_cnt {}, l_move_cnt {}, l_still_cnt {}'.format(self.id, self.r_move_cnt, self.r_still_cnt, self.l_move_cnt, self.l_still_cnt))
+        #print('ID {}: r_move_cnt {}, r_still_cnt {}, l_move_cnt {}, l_still_cnt {}'.format(self.id, self.r_move_cnt, self.r_still_cnt, self.l_move_cnt, self.l_still_cnt))
 
 
-    def random_act(self):
+    def random_act(self, hand):
+        if self.lock != 0:
+            return
+        if hand == 'right': # stop tracking left hand
+            self.l_move_cnt = 0 
+            self.l_still_cnt = 0
+        else: # stop tracking right hand
+            self.r_move_cnt = 0
+            self.r_still_cnt = 0
+        self.lock = 1
         self.arm.prepare2()
         act = self.arm.st_jd_b()        # rock-paper-scissors
         if act == 0:
@@ -411,7 +450,7 @@ class StateMachine:
         react to player's gesture
         support: Fist, Two, Five, ILY, Rock, Insult, Thumb up, Unknown
         """
-        if gesture == self.act:
+        if gesture in (0,2,5) and gesture == self.act:
             print('Draw')
         elif (gesture == 2 and self.act == 0) or (gesture == 0 and self.act == 5) or (gesture == 5 and self.act == 2):
             print('You Lose!')
@@ -433,8 +472,8 @@ class StateMachine:
         elif gesture == 1:                      # Insult
             print("No-no-no!!")
             # act(random(insult or no-no-no))
-        else:                                   # Unknown
-            print("I don't know what you say...")
+        else:                                   # Unknown or None
+            print("I don't know what you mean...")
             # act(don-know)
 
     def trigger(self, img):
@@ -450,7 +489,7 @@ class StateMachine:
         
         request_url = "https://aip.baidubce.com/rest/2.0/image-classify/v1/gesture"
 
-        # cv2.imwrite('hand.jpg', img)
+        cv2.imwrite('hand.jpg', img)
         base64_str = cv2.imencode('.jpg', img)[1].tostring()
         base64_str = base64.b64encode(base64_str)
 
@@ -472,6 +511,8 @@ class StateMachine:
         else: 
             gesture = None
             print('No response')
+        self.lock = 0
+        self.arm.prepare()
         return gesture
 
     def get_gesture(self, response):
@@ -486,11 +527,11 @@ class StateMachine:
         for res in results:
             classname = res['classname']
             print('your hand:', classname)
-            if classname in StateMachine.word2num.keys():
-                output_number = StateMachine.word2num[classname]
+            if classname in self.word2num.keys():
+                output_number = self.word2num[classname]
                 output_cls = classname
         if output_number == None:
-            print("No gesture recognized: ", response)
+            print("No gesture recognized!!!")
         print(output_number, output_cls)
         return output_number
 
@@ -559,7 +600,7 @@ def run_demo(net, image_provider, height_size, cpu, track_ids, arm):
         for pose in current_poses:
             if pose.id not in stateMachines.keys():
                 stateMachines[pose.id] = StateMachine(pose.id, pose.keypoints, arm)
-                print('ID {} detected'.format(pose.id))
+                #print('ID {} detected'.format(pose.id))
                 continue
             # call stateMachine methods
             stateMachines[pose.id].update(pose.keypoints, img)
