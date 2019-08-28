@@ -7,6 +7,7 @@ import time
 import pygame
 import serial
 from playsound import playsound
+import music
 
 pi=3.141593
 
@@ -18,9 +19,9 @@ class Robotarm(object):
         self.ser = serial.Serial(self.PORT, self.RATE, timeout=0.5)
 
         if sys.platform.lower().find('linux') != -1 or sys.platform.lower().find('darwin') != -1:
-            self.file = '../music/rap.mp3'
+            self.file = '../music/rap.wav'
         elif sys.platform.lower().find('win32') != -1:
-            self.file = '..\\music\\rap.mp3'
+            self.file = '..\\music\\rap.wav'
         else:
             self.file = None
         # playsound(self.file)
@@ -151,7 +152,7 @@ class Robotarm(object):
         '''
         Rock and playing music
         '''
-        os.system('rhythmbox '+self.file+' &')
+        music.play(self.file)
         self.control([10,10.5,7,90,1,0,1,1,0,15,1])
         self.send_control([145,10,95,70,55, 90,0,0,10,   5,1])
         self.send_control([145,10,95,70,55, 90,45,0,10,   5,1])

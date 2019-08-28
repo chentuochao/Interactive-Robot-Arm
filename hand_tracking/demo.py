@@ -103,7 +103,7 @@ class StateMachine:
         self.move = False   # if the arm is making action
         self.arm = arm
         self.act = None     # the action the arm does
-        self.word2num = {"Fist":0, "Two":2, "Three": 2, "Five":5, "Rock":4, "ILY":3, "Insult":1, "Thumb up":6, "Unknown":7}
+        self.word2num = {"Fist":0, "Two":2, "Three": 2, "Five":5, "Rock":2, "ILY":3, "Insult":1, "Thumb up":6, "Unknown":7}
         self.tracking_hand = None   # which hand to track
         self.l_track = True     # tracking left hand or not
         self.r_track = True     # tracking right hand or not
@@ -273,6 +273,12 @@ class StateMachine:
         
         request_url = "https://aip.baidubce.com/rest/2.0/image-classify/v1/gesture"
 
+        # h, w = img.shape[0:2]
+        # center = (w // 2, h // 2)
+        # M = cv2.getRotationMatrix2D(center, -90, 0.9)
+        # rotated = cv2.warpAffine(img, M, (w, h))
+        # img = rotated
+        # cv2.imwrite('rotate.jpg', rotated)
         cv2.imwrite('hand.jpg', img)
         base64_str = cv2.imencode('.jpg', img)[1].tostring()
         base64_str = base64.b64encode(base64_str)
@@ -399,7 +405,7 @@ if __name__ == '__main__':
         description='''Lightweight human pose estimation python demo.
                        This is just for quick results preview.
                        Please, consider c++ demo for the best performance.''')
-    parser.add_argument('--checkpoint-path', type=str, default='/media/bob-lytton/MyData/repos/torch_pose/checkpoint_iter_370000.pth', help='path to the checkpoint')
+    parser.add_argument('--checkpoint-path', type=str, default='checkpoint_iter_370000.pth', help='path to the checkpoint')
     parser.add_argument('--height-size', type=int, default=256, help='network input layer height size')
     parser.add_argument('--video', type=str, default='0', help='path to video file or camera id')
     parser.add_argument('--images', nargs='+', default='', help='path to input image(s)')
