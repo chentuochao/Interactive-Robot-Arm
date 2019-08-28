@@ -117,7 +117,8 @@ class StateMachine:
     
     def update(self, new_pose, img):
         # r_elb-3, r-wri-4, l_elb-6, l_wri-7
-        #print("self.move =", self.move)
+        print("self.move =", self.move)
+        print("tracking hand at beginning:", self.tracking_hand)
 
         if self.lock != 0:
             self.lock += 1
@@ -141,76 +142,222 @@ class StateMachine:
         if new_pose[7][0] != -1 and self.pose[7][0]:
             l_move_dist = np.linalg.norm(new_pose[7] - self.pose[7])
         else:
-            l_move_dist = -1     
-        
-        # if right hand detected
-        if r_move_dist != -1 and (self.lock == 0 or not self.r_move_cnt == 0):
-            if self.r_move_cnt < move_frame_thrd:
-                if r_move_dist > move_thrd and new_pose[4][1] > self.pose[4][1]:
+            l_move_dist = -1
+
+        """
+        pseudo-code
+        ver 2.0
+            need sign: self.act, self.tracking_hand
+            if not act:
+                if left hand move detected:
+                    record left hand move
+                    if move > 5 consecutive frames:
+                        if tracking_hand == None:
+                            tracking_hand = left
+                        else:
+                            tracking_hand = both
+                if right hand move detected:
+                    record right hand move
+                    if move > consecutive frames:
+                        if tracking_hand == None:
+                            tracking_hand = right
+                        else:
+                            tracking_hand = both
+                if tracking_hand != None
+                    robotarm act
+                    left hand stay frame cnt = 0
+                    right hand stay frame cnt = 0
+            elif act:
+
+                # after that find the hand that stays more than 5 consecutive frames
+                # send the hand image to baidu and detect gesture
+                # robotarm react due to the gesture
+
+                if left hand detected:
+                    if left hand moves:                 # threshold bigger
+                        stop tracking left hand         # then in later iterations it all stops
+                        if tracking_hand == left:
+                            react(Unknown gesture)
+                            act = False
+                            return
+                    else:
+                        record left hand stays
+                if right hand detected:
+                    if right hand moves:                # threshold bigger
+                        stop tracking right hand        # then in later iterations it all stops
+                        if tracking_hand == right
+                            react(Unknown gesture)
+                            act = False
+                            return
+                    else:
+                        record right hand stays
+
+                if (left hand stays more than 5 consecutive frames) and !(right hand stays more than 5 consecutive frames):
+                    # at this time tracking_hand cannot be 'right'
+                    send left hand to baidu and return gesture
+                    react(gesture)
+                    act = False
+                    return
+                elif !(left hand stays more than 5 consecutive frames) and (right hand stays more than 5 consecutive frames):
+                    # at this time tracking_hand cannot be 'left'
+                    right - same as above
+                elif (left hand stays more than 5 consecutive frames) and (right hand stays more than 5 consecutive frames):
+                    # at this time tracking_hand can be any one
+                    if tracking_hand == left:
+                        left -- same as above
+                    elif tracking_hand == right:
+                        right -- same as above
+                    else:
+                        send both to baidu and get both gestures            # bigger image part
+                        if gesture[0] and gesture[1] are all in (0,2,5):
+                            react(break-the-rule)
+                        elif gesture[0] or gesture[1] in (0,2,5):
+                            react(gesture-in-game)
+                        elif gesture[0] and gesture[1] not in (7):
+                            react(random(gesture[0], gesture[1])
+                        elif gesture[0] and gesture[1] in (7):
+                            react(Unknown-gesture)
+                        else:
+                            react(gesture-not-in-(7))
+                        act = False
+                        return
+        """
+
+        if self.move is False:   # robot arm is not moving
+            # if right limb detected
+            if r_move_dist != -1:
+                if r_move_dist > move_thrd and new_pose[4][1] > self.pose[4][1]:    # moving down
                     self.r_move_cnt += 1
-                    if self.r_move_cnt == move_frame_thrd and new_pose[2][1] < new_pose[4][1]:    # moves down
-                        self.random_act('right')
                 else:
                     self.r_move_cnt = 0
-                    # if self.move:
-                    #     self.arm.prepare()
-                    #     self.move = False
+                if self.r_move_cnt >= move_frame_thrd and new_pose[2][1] < new_pose[4][1]:    
+                    if self.tracking_hand is None:
+                        self.tracking_hand = 'right'
+                    elif self.tracking_hand == 'left':
+                        self.tracking_hand = 'both'
             else:
-                if r_move_dist <= move_thrd:
-                    self.r_still_cnt += 1
-                #else:
-                    #self.r_move_cnt = 0
-                    #self.r_still_cnt = 0
-                if self.r_still_cnt == still_frame_thrd:
-                    centerx, centery = new_pose[4]
-                    minx = max(0, int(centerx-1.5*self.limb_length))
-                    maxx = min(img.shape[1]-1, int(centerx+1.5*self.limb_length))
-                    miny = max(0, int(centery-1.5*self.limb_length))
-                    maxy = min(img.shape[0]-1, int(centery+1.5*self.limb_length))
-                    if new_pose[2][1] < new_pose[4][1]:     # wrist below shoulder
-                        gesture = self.trigger(img[miny:maxy, minx:maxx, :])
-                        self.react(gesture)
-                        self.arm.prepare()
-                        self.move = False
-                    else:
-                        self.r_move_cnt = 0
-                        self.r_still_cnt = 0
-
-        # if left limb detected
-        if l_move_dist != -1 and (self.lock == 0 or not self.l_move_cnt == 0):
-            if self.l_move_cnt < move_frame_thrd:
-                if l_move_dist > move_thrd and new_pose[7][1] > self.pose[7][1]: 
+                self.r_move_cnt = 0
+            # if left limb detected
+            if l_move_dist != -1:
+                if l_move_dist > move_thrd and new_pose[7][1] > self.pose[7][1]:    # moving down
                     self.l_move_cnt += 1
-                    if self.l_move_cnt == move_frame_thrd and new_pose[5][1] < new_pose[7][1]:
-                        self.random_act('left')
                 else:
                     self.l_move_cnt = 0
-                    # if self.move:
-                    #     self.arm.prepare()
-                    #     self.move = False
+                if self.l_move_cnt >= move_frame_thrd and new_pose[5][1] < new_pose[7][1]:    
+                    if self.tracking_hand is None:
+                        self.tracking_hand = 'left'
+                    elif self.tracking_hand == 'right':
+                        self.tracking_hand = 'both'
             else:
-                if l_move_dist <= move_thrd:
+                self.l_move_cnt = 0
+            if self.tracking_hand is not None:
+                self.random_act(self.tracking_hand)   # this will set self.move to be True
+                self.r_still_cnt = 0
+                self.l_still_cnt = 0
+        else:       # robot arm has already been moving
+            print("tracking_hand:", self.tracking_hand)
+            # left hand detected
+            if l_move_dist != -1:
+                if l_move_dist > move_thrd:
+                    self.l_track = False
+                    if self.tracking_hand == 'left':
+                        if self.lock > 20:
+                            self.lock = 0
+                            self.react(self.word2num['Unknown'])    # do not set self.move in this method
+                            self.arm.prepare()
+                            self.move = False       # set self.move here, in the position where calls the method
+                            self.tracking_hand = None
+                            return
+                        else:
+                            self.lock += 1
+                            self.l_track = True
+                else:
                     self.l_still_cnt += 1
-                #else:
-                #    self.l_move_cnt = 0
-                #    self.l_still_cnt = 0
-                if self.l_still_cnt == still_frame_thrd:
-                    centerx, centery = new_pose[7]
-                    minx = max(0, int(centerx-1.5*self.limb_length))
-                    maxx = min(img.shape[1]-1, int(centerx+1.5*self.limb_length))
-                    miny = max(0, int(centery-1.5*self.limb_length))
-                    maxy = max(img.shape[0]-1, int(centery+1.5*self.limb_length))
-                    if new_pose[5][1] < new_pose[7][1]:     # wrist below shoulder
-                        gesture = self.trigger(img[miny:maxy, minx:maxx, :])
-                        self.react(gesture)
+            else:
+                self.l_track = False
+                if self.tracking_hand == 'left':
+                    if self.lock > 20:
+                        self.lock = 0
+                        self.react(self.word2num['Unknown'])    # do not set self.move in this method
                         self.arm.prepare()
-                        self.move = False
+                        self.move = False       # set self.move here, in the position where calls the method
+                        self.tracking_hand = None
+                        return
                     else:
-                        self.r_move_cnt = 0
-                        self.r_still_cnt = 0
+                        self.lock += 1
+                        self.l_track = True
+            # right hand detected
+            if r_move_dist != -1:
+                if r_move_dist > move_thrd:
+                    self.r_track = False
+                    if self.tracking_hand == 'right':
+                        if self.lock > 20:
+                            self.lock = 0
+                            self.react(self.word2num['Unknown'])    # do not set self.move in this method
+                            self.arm.prepare()
+                            self.move = False       # set self.move here, in the position where calls the method
+                            self.tracking_hand = None
+                            return
+                        else:
+                            self.lock += 1
+                            self.r_track = True
+                else:
+                    self.r_still_cnt += 1
+            else:
+                self.r_track = False
+                if self.tracking_hand == 'right':
+                    if self.lock > 20:
+                        self.lock = 0
+                        self.react(self.word2num['Unknown'])    # do not set self.move in this method
+                        self.arm.prepare()
+                        self.move = False       # set self.move here, in the position where calls the method
+                        self.tracking_hand = None
+                        return
+                    else:
+                        self.lock += 1
+                        self.r_track = True
+            # left hand move
+            if self.l_still_cnt >= still_frame_thrd and self.r_still_cnt < still_frame_thrd:
+                # at this time tracking_hand cannot be 'right'
+                centerx, centery = new_pose[7]  # l_wri position
+                minx = max(0,                int(centerx - 1.5*self.limb_length))
+                maxx = min(img.shape[1] - 1, int(centerx + 1.5*self.limb_length))
+                miny = max(0,                int(centery - 1.5*self.limb_length))
+                maxy = max(img.shape[0] - 1, int(centery + 1.5*self.limb_length))
+                # cv2.imwrite('hand2.jpg', img[miny:maxy, minx:maxx, :])
+                gesture = self.trigger(img[miny:maxy, minx:maxx, :])
+                self.react(gesture)
+            elif self.l_still_cnt < still_frame_thrd and self.r_still_cnt >= still_frame_thrd:
+                # at this time tracking_hand cannot be 'left'
+                centerx, centery = new_pose[4]  # r_wri position
+                minx = max(0,                int(centerx - 1.5*self.limb_length))
+                maxx = min(img.shape[1] - 1, int(centerx + 1.5*self.limb_length))
+                miny = max(0,                int(centery - 1.5*self.limb_length))
+                maxy = max(img.shape[0] - 1, int(centery + 1.5*self.limb_length))
+                # cv2.imwrite('hand2.jpg', img[miny:maxy, minx:maxx, :])
+                gesture = self.trigger(img[miny:maxy, minx:maxx, :])    
+                self.react(gesture)
+            elif self.l_still_cnt >= still_frame_thrd and self.r_still_cnt >= still_frame_thrd:
+                if self.tracking_hand == 'left':
+                    centerx, centery = new_pose[7]  # l_wri position
+                elif self.tracking_hand == 'right':
+                    centerx, centery = new_pose[4]  # r_wri position
+                else:   # tracking_hand == 'both
+                    centerx, centery = (new_pose[4] + new_pose[7]) / 2
+                minx = max(0,                int(centerx - 1.5*self.limb_length))
+                maxx = min(img.shape[1] - 1, int(centerx + 1.5*self.limb_length))
+                miny = max(0,                int(centery - 1.5*self.limb_length))
+                maxy = max(img.shape[0] - 1, int(centery + 1.5*self.limb_length))
+                # cv2.imwrite('hand2.jpg', img[miny:maxy, minx:maxx, :])
+                gesture = self.trigger(img[miny:maxy, minx:maxx, :])
+                self.react(gesture)
+            
+            self.arm.prepare()
+            self.move = False
+            self.tracking_hand = None
         
         self.pose = new_pose
-        #print('ID {}: r_move_cnt {}, r_still_cnt {}, l_move_cnt {}, l_still_cnt {}'.format(self.id, self.r_move_cnt, self.r_still_cnt, self.l_move_cnt, self.l_still_cnt))
+        print('ID {}: r_move_cnt {}, r_still_cnt {}, l_move_cnt {}, l_still_cnt {}'.format(self.id, self.r_move_cnt, self.r_still_cnt, self.l_move_cnt, self.l_still_cnt))
 
 
     def random_act(self, hand):
@@ -219,9 +366,11 @@ class StateMachine:
         if hand == 'right': # stop tracking left hand
             self.l_move_cnt = 0 
             self.l_still_cnt = 0
-        else: # stop tracking right hand
+        elif hand == 'left': # stop tracking right hand
             self.r_move_cnt = 0
             self.r_still_cnt = 0
+        else:
+            pass
         self.lock = 1
         self.arm.prepare2()
         act = self.arm.st_jd_b()        # rock-paper-scissors
@@ -443,6 +592,7 @@ if __name__ == '__main__':
         print('start')
         run_demo(net, frame_provider, args.height_size, args.cpu, args.track_ids, arm)
     except KeyboardInterrupt:
-        arm.reset()
+        final_index=[90,10.5,7,90,0,0,0,0,0,30,1]
+        arm.control(final_index)
         arm.close()
         print('close')
