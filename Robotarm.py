@@ -1,8 +1,13 @@
-import serial
-import time
 import math
 import os
 import random
+import sys
+import time
+
+import pygame
+import serial
+from playsound import playsound
+
 pi=3.141593
 
 class Robotarm(object):
@@ -11,6 +16,14 @@ class Robotarm(object):
         self.RATE = rate
         self.angel_range = angel_range
         self.ser = serial.Serial(self.PORT, self.RATE, timeout=0.5)
+
+        if sys.platform.lower().find('linux') != -1 or sys.platform.lower().find('darwin') != -1:
+            self.file = '../music/rap.mp3'
+        elif sys.platform.lower().find('win32') != -1:
+            self.file = '..\\music\\rap.mp3'
+        else:
+            self.file = None
+        # playsound(self.file)
         if self.ser.isOpen()==0:
             print("Serial Open Error!!")
         else:
@@ -43,7 +56,7 @@ class Robotarm(object):
                 print("Angel"+str(i)+": Invalid angle!!!")
                 print("It should be within ["+str(self.angel_range[0][i] )+','+str(self.angel_range[1][i] )+']' )
                 return
-        print(intangel)
+        # print(intangel)
         send_bytes=bytes(intangel)
         self.ser.write(send_bytes)
         if angels[10] == 1:
@@ -111,10 +124,10 @@ class Robotarm(object):
             self.control([90, 10.5, 7, 0, 1, 1, 0, 1, 1, 12, 1])
         else:
             #self.control([170, 6, 15, 90, 1, 0, 1, 1, 1, 12, 1])
-            self.send_control([self.angel_range[0][0],self.angel_range[0][1],self.angel_range[0][2],self.angel_range[0][3],self.angel_range[0][4], 90,0,40,90,   12,1])
-            self.send_control([self.angel_range[1][0],self.angel_range[0][1],self.angel_range[1][2],self.angel_range[1][3],self.angel_range[1][4], 90,0,40,170,   5,1])
+            self.send_control([self.angel_range[0][0],self.angel_range[0][1],self.angel_range[0][2],self.angel_range[0][3],self.angel_range[0][4], 70,0,40,90,   12,1])
+            self.send_control([self.angel_range[1][0],self.angel_range[0][1],self.angel_range[1][2],self.angel_range[1][3],self.angel_range[1][4], 70,0,40,170,   5,1])
             for i in range(0, 2):
-                self.send_control([self.angel_range[1][0],self.angel_range[0][1],self.angel_range[1][2],self.angel_range[1][3],self.angel_range[1][4], 90,90,40,170,   10,1])
+                self.send_control([self.angel_range[1][0],self.angel_range[0][1],self.angel_range[1][2],self.angel_range[1][3],self.angel_range[1][4], 90,70,40,170,   10,1])
                 print("sdsda")
                 self.send_control([self.angel_range[1][0],self.angel_range[0][1],self.angel_range[1][2],self.angel_range[1][3],self.angel_range[1][4], 90,30,40,170,   10,1])
                 #self.control([160, 4, 15, 90, 1, 0, 1, 1, 1, 15, 1])
@@ -138,6 +151,7 @@ class Robotarm(object):
         '''
         Rock and playing music
         '''
+        os.system('rhythmbox '+self.file+' &')
         self.control([10,10.5,7,90,1,0,1,1,0,15,1])
         self.send_control([145,10,95,70,55, 90,0,0,10,   5,1])
         self.send_control([145,10,95,70,55, 90,45,0,10,   5,1])
@@ -189,12 +203,13 @@ class Robotarm(object):
         elif mode==2:  #napkin
             self.control([90,16,5,90,0,0,0,0,0,8,0])
             print("napkin")
+        return mode
 
     def wait(self):
         while 1:
             data = self.readline()
             if data!=b'' and data[0]==102:
-                print(data)
+                # print(data)
                 break
 
     def read(self,length):

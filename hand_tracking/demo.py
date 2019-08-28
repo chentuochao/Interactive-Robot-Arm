@@ -223,14 +223,14 @@ class StateMachine:
             self.r_move_cnt = 0
             self.r_still_cnt = 0
         self.lock = 1
-        self.arm.prepare2()
         act = self.arm.st_jd_b()        # rock-paper-scissors
         if act == 0:
             self.act = 0
         elif act == 1:
-            self.act == 2
+            self.act = 2                # not ==
         elif act == 2:
-            self.act == 5
+            self.act = 5
+        print('ACT:', act, 'SELF.ACT:', self.act)
         self.move = True
 
     def react(self, gesture):
@@ -238,31 +238,27 @@ class StateMachine:
         react to player's gesture
         support: Fist, Two, Five, ILY, Rock, Insult, Thumb up, Unknown
         """
+        print("GESTURE:", gesture, "SELF.ACT:", self.act)
+        # exit()
         if gesture in (0,2,5) and gesture == self.act:
             print('Draw')
         elif (gesture == 2 and self.act == 0) or (gesture == 0 and self.act == 5) or (gesture == 5 and self.act == 2):
             print('You Lose!')
-            # act(V-shape)
-            # img = cv2.imread('img/lose.jpg')
-            # cv2.imshow('Win or Lose', img)
-            # cv2.waitKey(1000)
-            #time.sleep(3)
+            self.arm.Robot_win()
+            time.sleep(1)
         elif (gesture == 2 and self.act == 5) or (gesture == 0 and self.act == 2) or (gesture == 5 and self.act == 0):
             print('You Win!')
-            # act(thumb-up)
-            # img = cv2.imread('img/win.jpg')
-            # cv2.imshow('Win or Lose', img)
-            # cv2.waitKey(1000)
-            #time.sleep(3)
+            self.arm.Human_win()
+            time.sleep(1)
         elif gesture == 4 or gesture == 3:      # Rock or ILY
             print("Yo-yo!!")
-            # act(rock)
+            self.arm.Rock()
         elif gesture == 1:                      # Insult
             print("No-no-no!!")
-            # act(random(insult or no-no-no))
+            self.arm.fuck()
+            time.sleep(1)
         else:                                   # Unknown or None
             print("I don't know what you mean...")
-            # act(don-know)
 
     def trigger(self, img):
         """
@@ -320,7 +316,6 @@ class StateMachine:
                 output_cls = classname
         if output_number == None:
             print("No gesture recognized!!!")
-        print(output_number, output_cls)
         return output_number
 
 
@@ -432,14 +427,8 @@ if __name__ == '__main__':
     arm = Robotarm(args.port, args.rate, angles)
 
     try:
-        # while 1:
-        #     arm.control(control_index)
-        #     data = arm.readline()
-        #     if data!=b'':
-        #         print(data[0])
-        #         if data[0]==98:
-        #             break
-        # arm.prepare()
+        arm.initial_set()
+        arm.prepare()
         print('start')
         run_demo(net, frame_provider, args.height_size, args.cpu, args.track_ids, arm)
     except KeyboardInterrupt:
