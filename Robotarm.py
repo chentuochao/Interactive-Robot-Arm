@@ -6,9 +6,10 @@ import random
 pi=3.141593
 
 class Robotarm(object):
-    def __init__(self, port="COM22", rate=9600,initial_pos=[60,10,15,15,55,0,0,0,90,30,1]):
+    def __init__(self, port="COM22", rate=9600,initial_pos=[30,10,15,15,55,90,0,0,90,30,1],angel_range=[[30,10,15,15,55,0,0,0,0],[145,135,95,70,125,180,180,180,180]] ):
         self.PORT = port
         self.RATE = rate
+        self.angel_range = angel_range
         self.ser = serial.Serial(self.PORT, self.RATE, timeout=0.5)
         if self.ser.isOpen()==0:
             print("Serial Open Error!!")
@@ -23,7 +24,7 @@ class Robotarm(object):
             self.ser.write(send_bytes)
             #print("send successfully")
             data = self.readline()
-            # print(data)
+            print(data)
             if data!=b'':
                 #print(data[0])
                 if data[0]==98:
@@ -31,8 +32,6 @@ class Robotarm(object):
         print("begin")
 
     def send_control(self, angels): #angels is the vector representing the angels of different servos [大拇指，食指，中指，无名指，小指，手腕旋转，第一节手臂，第二节手臂，转动速度（5-30，越小越快）,最后一个通信参数（默认为1)]
-        angel_range=[[60,10,15,15,55,0,0,0,0],  #min
-        [145,135,95,70,125,180,180,180,180]]    #max
         intangel=[0,0,0,0,0,0,0,0,0,0,0]
         if len(angels)!=11:
             print("WRONG INPUT!!!")
@@ -40,10 +39,11 @@ class Robotarm(object):
         for i in range(0,11):
             intangel[i]=round(angels[i])
         for i in range(0,9):
-            if intangel[i]>angel_range[1][i] or intangel[i]<angel_range[0][i]:
+            if intangel[i]>self.angel_range[1][i] or intangel[i]<self.angel_range[0][i]:
                 print("Angel"+str(i)+": Invalid angle!!!")
+                print("It should be within ["+str(self.angel_range[0][i] )+','+str(self.angel_range[1][i] )+']' )
                 return
-        # print(intangel)
+        print(intangel)
         send_bytes=bytes(intangel)
         self.ser.write(send_bytes)
         if angels[10] == 1:
@@ -92,18 +92,14 @@ class Robotarm(object):
         if theta0>180.01 or theta0<-0.01 or theta1>180.01 or theta1<-0.01 or theta2>180.01 or theta2<-0.01 or theta3>180.01 or theta3<-0.01:
             print("Out of angle range!!!")
             return
-        angel_range=[[60,10,15,15,55,0,0,0,0],  #min
-        [145,135,95,70,125,180,180,180,180]]    #max
         finger=[0,0,0,0,0]
         for i in range(0,5):
-            finger[i]=(angel_range[1][i]-angel_range[0][i])*control_index[4+i]+angel_range[0][i]
+            finger[i]=(self.angel_range[1][i]-self.angel_range[0][i])*control_index[4+i]+self.angel_range[0][i]
         speed = control_index[9]
         self.send_control([finger[0],finger[1],finger[2],finger[3],finger[4],theta3,180-theta2,theta1,theta0,speed,control_index[10]])
         
     def prepare(self):
-        self.control([90,0,15,90,0.8,0.8,0.8,0.8,0.8,30,1])
-    def prepare2(self):
-        self.control([90,16,5,90,0.6,0.6,0.6,0.6,0.6,7,1])
+        self.control([90,7,11,90,0.8,0.8,0.8,0.8,0.8,30,1])
     
     def fuck(self):
         '''
@@ -114,12 +110,17 @@ class Robotarm(object):
         if mode == 0:
             self.control([90, 10.5, 7, 0, 1, 1, 0, 1, 1, 12, 1])
         else:
-            self.control([170, 6, 15, 90, 1, 0, 1, 1, 1, 12, 1])
-            self.wait()
+            #self.control([170, 6, 15, 90, 1, 0, 1, 1, 1, 12, 1])
+            self.send_control([self.angel_range[0][0],self.angel_range[0][1],self.angel_range[0][2],self.angel_range[0][3],self.angel_range[0][4], 90,0,40,90,   12,1])
+            self.send_control([self.angel_range[1][0],self.angel_range[0][1],self.angel_range[1][2],self.angel_range[1][3],self.angel_range[1][4], 90,0,40,170,   5,1])
             for i in range(0, 2):
-                self.control([160, 4, 15, 90, 1, 0, 1, 1, 1, 15, 1])
-                self.control([160, 8, 15, 90, 1, 0, 1, 1, 1, 15, 1])
-            self.control([160, 6, 15, 90, 1, 0, 1, 1, 1, 12, 1])
+                self.send_control([self.angel_range[1][0],self.angel_range[0][1],self.angel_range[1][2],self.angel_range[1][3],self.angel_range[1][4], 90,90,40,170,   10,1])
+                print("sdsda")
+                self.send_control([self.angel_range[1][0],self.angel_range[0][1],self.angel_range[1][2],self.angel_range[1][3],self.angel_range[1][4], 90,30,40,170,   10,1])
+                #self.control([160, 4, 15, 90, 1, 0, 1, 1, 1, 15, 1])
+                #self.control([160, 8, 15, 90, 1, 0, 1, 1, 1, 15, 1])
+            self.send_control([self.angel_range[1][0],self.angel_range[0][1],self.angel_range[1][2],self.angel_range[1][3],self.angel_range[1][4], 90,45,40,170,   7,1])
+            #self.control([160, 6, 15, 90, 1, 0, 1, 1, 1, 12, 1])
 
     def Robot_win(self):
         '''
@@ -131,34 +132,35 @@ class Robotarm(object):
         '''
         If you win, the robot will praise you
         '''
-        self.send_control([60,135,95,70,125, 90,120,60,90,   12,1])
+        self.control([90, 17, 3, 90, 0, 1, 1, 1, 1, 10, 1])
 
     def Rock(self):
         '''
         Rock and playing music
         '''
         self.control([10,10.5,7,90,1,0,1,1,0,15,1])
-        self.send_control([145,10,95,70,55, 90,0,0,10,   20,1])
-        self.send_control([145,10,95,70,55, 90,45,0,10,   20,1])
-        self.send_control([145,10,95,70,55, 90,0,0,10,   20,1])
-        self.send_control([145,10,95,70,55, 90,45,0,10,   20,1])
-
+        self.send_control([145,10,95,70,55, 90,0,0,10,   5,1])
+        self.send_control([145,10,95,70,55, 90,45,0,10,   5,1])
+        self.send_control([145,10,95,70,55, 90,0,0,10,   5,1])
+        self.send_control([145,10,95,70,55, 90,45,0,10,   5,1])
+        '''
         self.send_control([145,10,95,70,55, 90,180,70,10,   20,1])
         self.send_control([145,10,95,70,55, 90,150,60,10,   20,1])
         self.send_control([145,10,95,70,55, 90,180,70,10,   20,1])
         self.send_control([145,10,95,70,55, 90,150,60,10,   20,1])
-
+        
         self.send_control([145,10,95,70,55, 90,180,70,10,   20,1])
         self.send_control([145,10,95,70,55, 90,150,60,10,   20,1])
         self.send_control([145,10,95,70,55, 90,180,70,10,   20,1])
         self.send_control([145,10,95,70,55, 90,150,60,10,   20,1])
-
+        '''
         self.send_control([60,10,15,15,55, 90,45,25,90,   20,1])
         #shake_hand()
         self.send_control([60,115,85,60,115, 90,45,25,90,   20,1])
-
+        time.sleep(0.5)
         self.send_control([145,135,95,70,125, 180,20,0,90,   20,1])
-        self.send_control([145,115,85,60,115, 180,50,30,90,   20,1])
+        time.sleep(0.5)
+        self.send_control([145,115,95,60,115, 180,50,30,90,   20,1])
     
     def come_on(self, num):
         '''
@@ -176,23 +178,23 @@ class Robotarm(object):
         self.control(final_index)
 
     def st_jd_b(self):
+        #self.control([90,16,5,90,0.6,0.6,0.6,0.6,0.6,7,0])
         mode=random.randint(0,2)
         if mode==0:  #stone
-            self.control([90,16,5,90,1,1,1,1,1,5,1])
+            self.control([90,16,5,90,1,1,1,1,1,8,0])
             print("stone")
         elif mode==1:  #cut
-            self.control([90,16,5,90,1,0,0,1,1,5,1])
+            self.control([90,16,5,90,1,0,0,1,1,8,0])
             print("cut")
         elif mode==2:  #napkin
-            self.control([90,16,5,90,0,0,0,0,0,5,1])
+            self.control([90,16,5,90,0,0,0,0,0,8,0])
             print("napkin")
 
     def wait(self):
-        #while 1:
-        while 0:
+        while 1:
             data = self.readline()
             if data!=b'' and data[0]==102:
-                # print(data)
+                print(data)
                 break
 
     def read(self,length):
