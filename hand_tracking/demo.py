@@ -104,7 +104,7 @@ class StateMachine:
         self.move = False   # if the arm is making action
         self.arm = arm
         self.act = None     # the action the arm does
-        self.word2num = {"Fist":0, "Two":2, "Three": 2, "Five":5, "Rock":2, "ILY":3, "Insult":1, "Thumb up":6, "Unknown":7}
+        self.word2num = {"Fist":0, "Two":2, "Three": 2, "Five":5, "Rock":2, "Heart_single":4, "ILY":3, "Insult":1, "Thumb up":6, "Unknown":7}
         self.tracking_hand = None   # which hand to track
         self.l_track = True     # tracking left hand or not
         self.r_track = True     # tracking right hand or not

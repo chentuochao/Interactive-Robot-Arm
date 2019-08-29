@@ -158,7 +158,7 @@ class Robotarm(object):
         '''
         Rock and playing music
         '''
-        #music.play(self.file)
+        music.play(self.file)
         self.control([10,10.5,7,90,1,0,1,1,0,15,1])
         self.send_control([145,10,95,70,55, 90,0,0,10,   5,1])
         self.send_control([145,10,95,70,55, 90,30,0,10,   5,1])
@@ -180,6 +180,7 @@ class Robotarm(object):
         self.shake_hand()
         self.send_control([60,115,85,60,115, 90,45,0,90,   10,1])
         time.sleep(0.5)
+        self.send_control([60,115,85,60,115, 90,45,50,90,   10,1])
         self.send_control([145,135,95,70,125, 180,100,50,90,   10,1])
         time.sleep(0.5)
         self.send_control([145,135,95,70,125, 180,50,0,90,   15,1])
