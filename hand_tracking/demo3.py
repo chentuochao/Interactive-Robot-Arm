@@ -164,10 +164,10 @@ class StateMachine:
                     #self.r_still_cnt = 0
                 if self.r_still_cnt == still_frame_thrd:
                     centerx, centery = new_pose[4]
-                    minx = max(0, int(centerx-1.5*self.limb_length))
-                    maxx = min(img.shape[1]-1, int(centerx+1.5*self.limb_length))
-                    miny = max(0, int(centery-1.5*self.limb_length))
-                    maxy = min(img.shape[0]-1, int(centery+1.5*self.limb_length))
+                    minx = max(0, int(centerx - 1.*self.limb_length))
+                    maxx = min(img.shape[1]-1, int(centerx + 1.*self.limb_length))
+                    miny = max(0, int(centery - 1.*self.limb_length))
+                    maxy = min(img.shape[0]-1, int(centery + 1.*self.limb_length))
                     if new_pose[2][1] < new_pose[4][1]:     # wrist below shoulder
                         gesture = self.trigger(img[miny:maxy, minx:maxx, :])
                         self.react(gesture)
@@ -197,10 +197,10 @@ class StateMachine:
                 #    self.l_still_cnt = 0
                 if self.l_still_cnt == still_frame_thrd:
                     centerx, centery = new_pose[7]
-                    minx = max(0, int(centerx-1.5*self.limb_length))
-                    maxx = min(img.shape[1]-1, int(centerx+1.5*self.limb_length))
-                    miny = max(0, int(centery-1.5*self.limb_length))
-                    maxy = max(img.shape[0]-1, int(centery+1.5*self.limb_length))
+                    minx = max(0, int(centerx - 1.5*self.limb_length))
+                    maxx = min(img.shape[1]-1, int(centerx + 1.5*self.limb_length))
+                    miny = max(0, int(centery - 1.5*self.limb_length))
+                    maxy = max(img.shape[0]-1, int(centery + 1.5*self.limb_length))
                     if new_pose[5][1] < new_pose[7][1]:     # wrist below shoulder
                         gesture = self.trigger(img[miny:maxy, minx:maxx, :])
                         self.react(gesture)
@@ -294,10 +294,12 @@ class StateMachine:
         params = {"image":base64_str}
         params = urllib.parse.urlencode(params).encode(encoding='UTF8')
 
-        access_token = '24.c277ba8aff1df28b001179eb81038f18.2592000.1569241320.282335-17077804'
+        # Need updata
+        access_token = '24.b3b4ee75de9f529e7f9f4d0b021c96fd.2592000.1573748036.282335-17071955'
         request_url = request_url + "?access_token=" + access_token
         request = urllib.request.Request(url=request_url, data=params)
         request.add_header('Content-Type', 'application/x-www-form-urlencoded')
+
         response = urllib.request.urlopen(request)
         content = response.read()
         if content:

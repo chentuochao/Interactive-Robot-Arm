@@ -293,7 +293,8 @@ class StateMachine:
         params = {"image":base64_str}
         params = urllib.parse.urlencode(params).encode(encoding='UTF8')
 
-        access_token = '24.c277ba8aff1df28b001179eb81038f18.2592000.1569241320.282335-17077804'
+        # Need update every 30 days
+        access_token = '24.b3b4ee75de9f529e7f9f4d0b021c96fd.2592000.1573748036.282335-17071955'
         request_url = request_url + "?access_token=" + access_token
         request = urllib.request.Request(url=request_url, data=params)
         request.add_header('Content-Type', 'application/x-www-form-urlencoded')
