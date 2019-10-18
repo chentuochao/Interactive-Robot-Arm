@@ -21,7 +21,7 @@ elif sys.platform.lower().find('win32') != -1:
     prefix = '..\\'
 sys.path.append(prefix)
 import time
-#from Robotarm import Robotarm
+from Robotarm import Robotarm
 
 arm = None
 
@@ -102,7 +102,7 @@ class StateMachine:
         self.l_still_cnt = 0
         self.pose = pose
         self.move = False   # if the arm is making action
-        #self.arm = arm
+        self.arm = arm
         self.act = None     # the action the arm does
         self.word2num = {"Fist":0, "Two":2, "Three": 2, "Five":5, "Rock":2, "Heart_single":4, "ILY":3, "Insult":1, "Thumb up":6, "Unknown":7}
         self.tracking_hand = None   # which hand to track
@@ -124,7 +124,7 @@ class StateMachine:
             self.lock += 1
         if self.lock == 20:
             self.lock = 0
-            ##self.arm.prepare()
+            self.arm.prepare()
 
 
         if new_pose[4][0] != -1 and new_pose[3][0] != -1:
@@ -171,7 +171,7 @@ class StateMachine:
                     if new_pose[2][1] < new_pose[4][1]:     # wrist below shoulder
                         gesture = self.trigger(img[miny:maxy, minx:maxx, :])
                         self.react(gesture)
-                        #self.arm.prepare()
+                        self.arm.prepare()
                         self.move = False
                     else:
                         self.r_move_cnt = 0
@@ -204,7 +204,7 @@ class StateMachine:
                     if new_pose[5][1] < new_pose[7][1]:     # wrist below shoulder
                         gesture = self.trigger(img[miny:maxy, minx:maxx, :])
                         self.react(gesture)
-                        #self.arm.prepare()
+                        self.arm.prepare()
                         self.move = False
                     else:
                         self.r_move_cnt = 0
@@ -229,8 +229,8 @@ class StateMachine:
             self.r_move_cnt = 0
             self.r_still_cnt = 0
         self.lock = 1
-        #act = self.arm.st_jd_b()        # rock-paper-scissors
-        act = 0
+        act = self.arm.st_jd_b()        # rock-paper-scissors
+        # act = 0
         if act == 0:
             self.act = 0
         elif act == 1:
@@ -248,22 +248,22 @@ class StateMachine:
         print("GESTURE:", gesture, "SELF.ACT:", self.act)
         # exit()
         if gesture in (0,2,5) and gesture == self.act:
-            #self.arm.come_on(2)
+            self.arm.come_on(2)
             print('Draw')
         elif (gesture == 2 and self.act == 0) or (gesture == 0 and self.act == 5) or (gesture == 5 and self.act == 2):
             print('You Lose!')
-            #self.arm.Robot_win()
+            self.arm.Robot_win()
             time.sleep(1)
         elif (gesture == 2 and self.act == 5) or (gesture == 0 and self.act == 2) or (gesture == 5 and self.act == 0):
             print('You Win!')
-            #self.arm.Human_win()
+            self.arm.Human_win()
             time.sleep(1)
         elif gesture == 4 or gesture == 3:      # Rock or ILY
             print("Yo-yo!!")
-            #self.arm.Rock()
+            self.arm.Rock()
         elif gesture == 1:                      # Insult
             print("No-no-no!!")
-            #self.arm.fuck()
+            self.arm.fuck()
             time.sleep(1)
         else:                                   # Unknown or None
             print("I don't know what you mean...")
@@ -312,7 +312,7 @@ class StateMachine:
             gesture = None
             print('No response')
         self.lock = 0
-        #self.arm.prepare()
+        self.arm.prepare()
         return gesture
 
     def get_gesture(self, response):
@@ -440,14 +440,14 @@ if __name__ == '__main__':
     
     angles=[60,10,15,15,55,90,0,0,90,30,1] #angles is the vector representing the angles of different servos []
     control_index=[90,10.5,11,90,1,1,1,1,1,30,1]
-    #arm = Robotarm(args.port, args.rate, angles)
+    arm = Robotarm(args.port, args.rate, angles)
 
     try:
-        #arm.initial_set()
-        #arm.prepare()
+        arm.initial_set()
+        arm.prepare()
         print('start')
         run_demo(net, frame_provider, args.height_size, args.cpu, args.track_ids, arm)
     except KeyboardInterrupt:
-        #arm.reset()
-        #arm.close()
+        arm.reset()
+        arm.close()
         print('close')
